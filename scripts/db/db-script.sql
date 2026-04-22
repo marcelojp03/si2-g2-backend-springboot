@@ -1,15 +1,16 @@
 -- =========================================================
--- SPRINT 1 - BASE DE DATOS (VERSION 2 CORREGIDA)
+-- SPRINT 1 - BASE DE DATOS (VERSION 3)
 -- Sistema de Gestión Académica SaaS
 -- PostgreSQL
 -- Schema: sia (Sistema de Información Académico)
 -- =========================================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "citext";
 
 -- Crear schema SIA y establecerlo como activo
 CREATE SCHEMA IF NOT EXISTS sia;
-SET search_path TO sia;
+SET search_path TO sia, public;
 
 -- =========================================================
 -- FUNCIÓN GENERAL PARA actualizado_en
@@ -34,12 +35,12 @@ CREATE TABLE institucion (
     nombre VARCHAR(200) NOT NULL,
     tipo_institucion VARCHAR(20) NOT NULL CHECK (tipo_institucion IN ('FISCAL', 'CONVENIO', 'PRIVADO')),
     telefono VARCHAR(30),
-    correo VARCHAR(150),
+    correo CITEXT,
     direccion VARCHAR(255),
     logo_url TEXT,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW()
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE configuracion_institucion (
@@ -50,8 +51,8 @@ CREATE TABLE configuracion_institucion (
     tipo_valor VARCHAR(30) NOT NULL DEFAULT 'TEXTO'
         CHECK (tipo_valor IN ('TEXTO', 'NUMERO', 'BOOLEANO', 'JSON')),
     descripcion VARCHAR(255),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_configuracion_institucion UNIQUE (id_institucion, clave)
 );
 
@@ -62,23 +63,23 @@ CREATE TABLE rol (
     descripcion VARCHAR(255),
     es_global BOOLEAN NOT NULL DEFAULT FALSE,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW()
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE usuario (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_institucion UUID NULL REFERENCES institucion(id) ON DELETE CASCADE,
-    correo VARCHAR(150) NOT NULL UNIQUE,
+    correo CITEXT NOT NULL UNIQUE,
     hash_contrasena TEXT NOT NULL,
     nombres VARCHAR(120) NOT NULL,
     apellidos VARCHAR(120) NOT NULL,
     telefono VARCHAR(30),
     requiere_cambio_contrasena BOOLEAN NOT NULL DEFAULT FALSE,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO', 'BLOQUEADO')),
-    ultimo_acceso TIMESTAMP NULL,
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW()
+    ultimo_acceso TIMESTAMPTZ NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE usuario_rol (
@@ -86,10 +87,15 @@ CREATE TABLE usuario_rol (
     id_usuario UUID NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
     id_rol UUID NOT NULL REFERENCES rol(id),
     activo BOOLEAN NOT NULL DEFAULT TRUE,
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_usuario_rol UNIQUE (id_usuario, id_rol)
 );
+
+-- Solo un rol activo por usuario (multirol disponible en el futuro)
+CREATE UNIQUE INDEX uq_usuario_rol_activo_unico
+    ON usuario_rol (id_usuario)
+    WHERE activo = TRUE;
 
 -- =========================================================
 -- 3. ESTRUCTURA ACADÉMICA
@@ -104,9 +110,10 @@ CREATE TABLE gestion_academica (
     fecha_fin DATE NOT NULL,
     activa BOOLEAN NOT NULL DEFAULT FALSE,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVA' CHECK (estado IN ('ACTIVA', 'CERRADA', 'ANULADA')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_gestion_academica UNIQUE (id_institucion, nombre),
+    CONSTRAINT uq_gestion_id_institucion UNIQUE (id, id_institucion),
     CONSTRAINT ck_gestion_fechas CHECK (fecha_fin >= fecha_inicio)
 );
 
@@ -123,10 +130,11 @@ CREATE TABLE curso (
     nivel VARCHAR(50),
     orden_visual INTEGER,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_curso_nombre UNIQUE (id_institucion, nombre),
-    CONSTRAINT uq_curso_codigo UNIQUE NULLS NOT DISTINCT (id_institucion, codigo)
+    CONSTRAINT uq_curso_codigo UNIQUE NULLS NOT DISTINCT (id_institucion, codigo),
+    CONSTRAINT uq_curso_id_institucion UNIQUE (id, id_institucion)
 );
 
 CREATE TABLE paralelo (
@@ -137,10 +145,15 @@ CREATE TABLE paralelo (
     nombre VARCHAR(20) NOT NULL,
     capacidad INTEGER,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_paralelo UNIQUE (id_institucion, id_curso, id_gestion_academica, nombre),
-    CONSTRAINT ck_paralelo_capacidad CHECK (capacidad IS NULL OR capacidad > 0)
+    CONSTRAINT uq_paralelo_id_institucion UNIQUE (id, id_institucion),
+    CONSTRAINT ck_paralelo_capacidad CHECK (capacidad IS NULL OR capacidad > 0),
+    CONSTRAINT fk_paralelo_curso_institucion
+        FOREIGN KEY (id_curso, id_institucion) REFERENCES curso (id, id_institucion),
+    CONSTRAINT fk_paralelo_gestion_institucion
+        FOREIGN KEY (id_gestion_academica, id_institucion) REFERENCES gestion_academica (id, id_institucion)
 );
 
 CREATE TABLE materia (
@@ -151,10 +164,11 @@ CREATE TABLE materia (
     area VARCHAR(100),
     carga_horaria INTEGER,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_materia_codigo UNIQUE (id_institucion, codigo),
     CONSTRAINT uq_materia_nombre UNIQUE (id_institucion, nombre),
+    CONSTRAINT uq_materia_id_institucion UNIQUE (id, id_institucion),
     CONSTRAINT ck_materia_carga CHECK (carga_horaria IS NULL OR carga_horaria > 0)
 );
 
@@ -166,10 +180,16 @@ CREATE TABLE curso_materia (
     id_gestion_academica UUID NOT NULL REFERENCES gestion_academica(id) ON DELETE CASCADE,
     carga_horaria INTEGER,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_curso_materia UNIQUE (id_institucion, id_curso, id_materia, id_gestion_academica),
-    CONSTRAINT ck_curso_materia_carga CHECK (carga_horaria IS NULL OR carga_horaria > 0)
+    CONSTRAINT ck_curso_materia_carga CHECK (carga_horaria IS NULL OR carga_horaria > 0),
+    CONSTRAINT fk_curso_materia_curso_institucion
+        FOREIGN KEY (id_curso, id_institucion) REFERENCES curso (id, id_institucion),
+    CONSTRAINT fk_curso_materia_materia_institucion
+        FOREIGN KEY (id_materia, id_institucion) REFERENCES materia (id, id_institucion),
+    CONSTRAINT fk_curso_materia_gestion_institucion
+        FOREIGN KEY (id_gestion_academica, id_institucion) REFERENCES gestion_academica (id, id_institucion)
 );
 
 -- =========================================================
@@ -185,15 +205,16 @@ CREATE TABLE docente (
     nombres VARCHAR(120) NOT NULL,
     apellidos VARCHAR(120) NOT NULL,
     telefono VARCHAR(30),
-    correo VARCHAR(150),
+    correo CITEXT,
     especialidad VARCHAR(120),
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_docente_documento UNIQUE (id_institucion, documento_identidad),
     CONSTRAINT uq_docente_codigo UNIQUE (id_institucion, codigo),
     CONSTRAINT uq_docente_correo UNIQUE (id_institucion, correo),
-    CONSTRAINT uq_docente_usuario UNIQUE (id_usuario)
+    CONSTRAINT uq_docente_usuario UNIQUE (id_usuario),
+    CONSTRAINT uq_docente_id_institucion UNIQUE (id, id_institucion)
 );
 
 CREATE TABLE estudiante (
@@ -208,14 +229,15 @@ CREATE TABLE estudiante (
     sexo VARCHAR(15) CHECK (sexo IN ('MASCULINO', 'FEMENINO', 'OTRO')),
     direccion VARCHAR(255),
     telefono VARCHAR(30),
-    correo VARCHAR(150),
+    correo CITEXT,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO', 'EGRESADO', 'RETIRADO')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_estudiante_codigo UNIQUE (id_institucion, codigo_estudiante),
     CONSTRAINT uq_estudiante_documento UNIQUE (id_institucion, documento_identidad),
     CONSTRAINT uq_estudiante_correo UNIQUE (id_institucion, correo),
-    CONSTRAINT uq_estudiante_usuario UNIQUE (id_usuario)
+    CONSTRAINT uq_estudiante_usuario UNIQUE (id_usuario),
+    CONSTRAINT uq_estudiante_id_institucion UNIQUE (id, id_institucion)
 );
 
 CREATE TABLE tutor (
@@ -226,14 +248,15 @@ CREATE TABLE tutor (
     nombres VARCHAR(120) NOT NULL,
     apellidos VARCHAR(120) NOT NULL,
     telefono VARCHAR(30),
-    correo VARCHAR(150),
+    correo CITEXT,
     direccion VARCHAR(255),
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_tutor_documento UNIQUE (id_institucion, documento_identidad),
     CONSTRAINT uq_tutor_correo UNIQUE (id_institucion, correo),
-    CONSTRAINT uq_tutor_usuario UNIQUE (id_usuario)
+    CONSTRAINT uq_tutor_usuario UNIQUE (id_usuario),
+    CONSTRAINT uq_tutor_id_institucion UNIQUE (id, id_institucion)
 );
 
 CREATE TABLE estudiante_tutor (
@@ -244,9 +267,13 @@ CREATE TABLE estudiante_tutor (
     parentesco VARCHAR(50) NOT NULL,
     es_principal BOOLEAN NOT NULL DEFAULT FALSE,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    CONSTRAINT uq_estudiante_tutor UNIQUE (id_institucion, id_estudiante, id_tutor)
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_estudiante_tutor UNIQUE (id_institucion, id_estudiante, id_tutor),
+    CONSTRAINT fk_est_tutor_estudiante_institucion
+        FOREIGN KEY (id_estudiante, id_institucion) REFERENCES estudiante (id, id_institucion),
+    CONSTRAINT fk_est_tutor_tutor_institucion
+        FOREIGN KEY (id_tutor, id_institucion) REFERENCES tutor (id, id_institucion)
 );
 
 -- Solo un tutor principal activo por estudiante
@@ -268,8 +295,14 @@ CREATE TABLE inscripcion (
     fecha_inscripcion DATE NOT NULL DEFAULT CURRENT_DATE,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVA' CHECK (estado IN ('ACTIVA', 'RETIRADA', 'CONCLUIDA', 'ANULADA')),
     observacion VARCHAR(255),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW()
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_inscripcion_estudiante_institucion
+        FOREIGN KEY (id_estudiante, id_institucion) REFERENCES estudiante (id, id_institucion),
+    CONSTRAINT fk_inscripcion_gestion_institucion
+        FOREIGN KEY (id_gestion_academica, id_institucion) REFERENCES gestion_academica (id, id_institucion),
+    CONSTRAINT fk_inscripcion_paralelo_institucion
+        FOREIGN KEY (id_paralelo, id_institucion) REFERENCES paralelo (id, id_institucion)
 );
 
 -- Índice para evitar duplicados activos del mismo estudiante en la misma gestión
@@ -286,10 +319,18 @@ CREATE TABLE asignacion_docente (
     id_gestion_academica UUID NOT NULL REFERENCES gestion_academica(id) ON DELETE CASCADE,
     carga_horaria INTEGER,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVA' CHECK (estado IN ('ACTIVA', 'INACTIVA')),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
-    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_asignacion_docente UNIQUE (id_institucion, id_docente, id_materia, id_paralelo, id_gestion_academica),
-    CONSTRAINT ck_asignacion_carga CHECK (carga_horaria IS NULL OR carga_horaria > 0)
+    CONSTRAINT ck_asignacion_carga CHECK (carga_horaria IS NULL OR carga_horaria > 0),
+    CONSTRAINT fk_asignacion_docente_institucion
+        FOREIGN KEY (id_docente, id_institucion) REFERENCES docente (id, id_institucion),
+    CONSTRAINT fk_asignacion_materia_institucion
+        FOREIGN KEY (id_materia, id_institucion) REFERENCES materia (id, id_institucion),
+    CONSTRAINT fk_asignacion_paralelo_institucion
+        FOREIGN KEY (id_paralelo, id_institucion) REFERENCES paralelo (id, id_institucion),
+    CONSTRAINT fk_asignacion_gestion_institucion
+        FOREIGN KEY (id_gestion_academica, id_institucion) REFERENCES gestion_academica (id, id_institucion)
 );
 
 -- =========================================================
@@ -300,7 +341,7 @@ CREATE TABLE bitacora_auditoria (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_institucion UUID NULL REFERENCES institucion(id),
     id_usuario UUID NULL REFERENCES usuario(id),
-    fecha_evento TIMESTAMP NOT NULL DEFAULT NOW(),
+    fecha_evento TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     direccion_ip VARCHAR(50),
     plataforma_cliente VARCHAR(30),
     agente_usuario TEXT,
@@ -312,7 +353,7 @@ CREATE TABLE bitacora_auditoria (
     datos_despues JSONB,
     exito BOOLEAN NOT NULL DEFAULT TRUE,
     mensaje VARCHAR(255),
-    creado_en TIMESTAMP NOT NULL DEFAULT NOW()
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_bitacora_institucion ON bitacora_auditoria (id_institucion);
@@ -408,12 +449,11 @@ CREATE TRIGGER trg_asignacion_docente_actualizado_en
 -- =========================================================
 
 INSERT INTO rol (codigo, nombre, descripcion, es_global) VALUES
-('SUPER_ADMIN',       'Super Administrador',           'Administrador global del sistema',          TRUE),
-('ADMIN_INSTITUCION', 'Administrador de Institución',  'Administrador principal de la institución', FALSE),
-('DIRECTOR',          'Director',                      'Dirección institucional',                   FALSE),
-('DOCENTE',           'Docente',                       'Docente del sistema',                       FALSE),
-('ESTUDIANTE',        'Estudiante',                    'Estudiante del sistema',                    FALSE),
-('TUTOR',             'Tutor',                         'Padre, madre o tutor',                      FALSE);
+('SUPER_ADMIN',       'Super Administrador',          'Administrador global del sistema',             TRUE),
+('ADMIN_INSTITUCION', 'Administrador de Institución', 'Administrador principal de la institución',   FALSE),
+('DIRECTOR',          'Director',                     'Dirección institucional',                      FALSE),
+('SECRETARIO',        'Secretario',                   'Gestión operativa académica y administrativa', FALSE),
+('DOCENTE',           'Docente',                      'Docente del sistema',                          FALSE);
 
 INSERT INTO institucion (codigo, nombre, tipo_institucion, telefono, correo, direccion)
 VALUES ('UEM-001', 'Unidad Educativa Modelo', 'PRIVADO', '70000000', 'contacto@uemodelo.edu.bo', 'Santa Cruz - Bolivia');

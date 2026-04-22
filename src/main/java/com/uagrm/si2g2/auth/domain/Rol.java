@@ -3,7 +3,7 @@ package com.uagrm.si2g2.auth.domain;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -38,19 +38,19 @@ public class Rol {
     private String estado = "ACTIVO";
 
     @Column(name = "creado_en", nullable = false, updatable = false)
-    private LocalDateTime creadoEn;
+    private Instant creadoEn;
 
     @Column(name = "actualizado_en", nullable = false)
-    private LocalDateTime actualizadoEn;
+    private Instant actualizadoEn;
 
     @PrePersist
     protected void onCreate() {
-        creadoEn = LocalDateTime.now();
-        actualizadoEn = LocalDateTime.now();
+        creadoEn = Instant.now();
+        actualizadoEn = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        actualizadoEn = LocalDateTime.now();
+        actualizadoEn = Instant.now();
     }
 }

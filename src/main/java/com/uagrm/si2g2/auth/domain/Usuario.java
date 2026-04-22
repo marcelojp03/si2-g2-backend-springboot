@@ -6,7 +6,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -52,13 +52,13 @@ public class Usuario implements UserDetails {
     private String estado = "ACTIVO";
 
     @Column(name = "ultimo_acceso")
-    private LocalDateTime ultimoAcceso;
+    private Instant ultimoAcceso;
 
     @Column(name = "creado_en", nullable = false, updatable = false)
-    private LocalDateTime creadoEn;
+    private Instant creadoEn;
 
     @Column(name = "actualizado_en", nullable = false)
-    private LocalDateTime actualizadoEn;
+    private Instant actualizadoEn;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -71,13 +71,13 @@ public class Usuario implements UserDetails {
 
     @PrePersist
     protected void onCreate() {
-        creadoEn = LocalDateTime.now();
-        actualizadoEn = LocalDateTime.now();
+        creadoEn = Instant.now();
+        actualizadoEn = Instant.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        actualizadoEn = LocalDateTime.now();
+        actualizadoEn = Instant.now();
     }
 
     // --- UserDetails ---
