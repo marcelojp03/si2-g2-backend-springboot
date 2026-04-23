@@ -7,9 +7,12 @@ import com.uagrm.si2g2.auth.domain.UsuarioRepository;
 import com.uagrm.si2g2.auth.dto.AuthResponse;
 import com.uagrm.si2g2.auth.dto.LoginRequest;
 import com.uagrm.si2g2.auth.dto.RegisterRequest;
+import com.uagrm.si2g2.auditoria.application.AuditoriaService;
 import com.uagrm.si2g2.security.JwtService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -30,12 +34,21 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final AuditoriaService auditoriaService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        Rol rol = rolRepository.findByCodigo("ADMIN_INSTITUCION")
+        if (usuarioRepository.existsByCorreo(request.getCorreo())) {
+            log.warn("Intento de registro con correo duplicado: {}", request.getCorreo());
+            throw new IllegalStateException("Ya existe un usuario con el correo: " + request.getCorreo());
+        }
+
+        String codigoRol = (request.getCodigoRol() != null && !request.getCodigoRol().isBlank())
+                ? request.getCodigoRol()
+                : "ADMIN_INSTITUCION";
+        Rol rol = rolRepository.findByCodigo(codigoRol)
                 .orElseThrow(() -> new IllegalStateException(
-                        "Rol ADMIN_INSTITUCION no encontrado. Ejecute db-script.sql primero."));
+                        "Rol '" + codigoRol + "' no encontrado. Ejecute db-script.sql primero."));
 
         Usuario usuario = Usuario.builder()
                 .idInstitucion(request.getIdInstitucion())
@@ -47,17 +60,35 @@ public class AuthService {
                 .build();
 
         usuarioRepository.save(usuario);
+        log.info("Register exitoso: correo={}, rol={}", usuario.getCorreo(), codigoRol);
+        auditoriaService.registrar(usuario.getIdInstitucion(), usuario.getId(),
+                "AUTH", "REGISTER", "usuario", usuario.getId().toString(),
+                true, "Rol asignado: " + codigoRol);
 
         return buildAuthResponse(usuario);
     }
 
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getCorreo(), request.getContrasena())
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getCorreo(), request.getContrasena())
+            );
+        } catch (BadCredentialsException e) {
+            log.warn("Login fallido: correo={}", request.getCorreo());
+            auditoriaService.registrar(null, null,
+                    "AUTH", "LOGIN_FALLIDO", "usuario", null,
+                    false, "Credenciales incorrectas para: " + request.getCorreo());
+            throw e;
+        }
 
         Usuario usuario = usuarioRepository.findByCorreo(request.getCorreo())
                 .orElseThrow();
+
+        log.info("Login exitoso: correo={}, roles={}", usuario.getCorreo(),
+                usuario.getRoles().stream().map(Rol::getCodigo).collect(Collectors.joining(",")));
+        auditoriaService.registrar(usuario.getIdInstitucion(), usuario.getId(),
+                "AUTH", "LOGIN_EXITOSO", "usuario", usuario.getId().toString(),
+                true, null);
 
         return buildAuthResponse(usuario);
     }

@@ -1,5 +1,6 @@
 package com.uagrm.si2g2.security;
 
+import com.uagrm.si2g2.tenant.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -49,9 +51,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 );
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                // Extraer id_institucion del JWT y almacenar en TenantContext
+                String idInstStr = jwtService.extractClaim(jwt,
+                        claims -> claims.get("id_institucion", String.class));
+                if (idInstStr != null) {
+                    TenantContext.set(UUID.fromString(idInstStr));
+                }
             }
         }
 
-        filterChain.doFilter(request, response);
+        try {
+            filterChain.doFilter(request, response);
+        } finally {
+            TenantContext.clear();
+        }
     }
 }

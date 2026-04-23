@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: "optional:file:.env[.properties]"
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -7,17 +9,39 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_schema: sia
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/java
+    livereload:
+      enabled: true
 
 server:
   port: 2026
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
 
 app:
   jwt:
     secret: ${JWT_SECRET}
     expiration: ${JWT_EXPIRATION:86400000}
+  super-admin:
+    correo: ${SUPER_ADMIN_EMAIL}
+    contrasena: ${SUPER_ADMIN_PASSWORD}
+    nombres: ${SUPER_ADMIN_NOMBRES:Super}
+    apellidos: ${SUPER_ADMIN_APELLIDOS:Admin}
+  cors:
+    allowed-origins: http://localhost:4200,http://localhost:3000
