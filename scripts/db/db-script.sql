@@ -412,6 +412,97 @@ CREATE TRIGGER trg_paralelo_actualizado_en
     BEFORE UPDATE ON paralelo
     FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
 
+-- =========================================================
+-- SUBSISTEMA DE ARCHIVOS / S3
+-- =========================================================
+
+CREATE TABLE sia.archivo (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_institucion UUID NOT NULL REFERENCES sia.institucion(id) ON DELETE CASCADE,
+    id_usuario_subio UUID NULL REFERENCES sia.usuario(id) ON DELETE SET NULL,
+
+    nombre_original VARCHAR(255) NOT NULL,
+    nombre_archivo VARCHAR(255) NOT NULL,
+    extension VARCHAR(20),
+    mime_type VARCHAR(100) NOT NULL,
+    tamano_bytes BIGINT NOT NULL CHECK (tamano_bytes >= 0),
+
+    bucket_s3 VARCHAR(150) NOT NULL,
+    region_s3 VARCHAR(50),
+    key_s3 TEXT NOT NULL,
+    etag VARCHAR(100),
+    checksum_sha256 VARCHAR(128),
+
+    categoria VARCHAR(30) NOT NULL CHECK (
+        categoria IN ('IMAGEN', 'DOCUMENTO', 'EVIDENCIA', 'ADJUNTO', 'OTRO')
+    ),
+    visibilidad VARCHAR(20) NOT NULL DEFAULT 'PRIVADO' CHECK (
+        visibilidad IN ('PRIVADO', 'PUBLICO', 'FIRMADO')
+    ),
+    estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (
+        estado IN ('ACTIVO', 'ELIMINADO')
+    ),
+
+    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE sia.archivo_referencia (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_institucion UUID NOT NULL REFERENCES sia.institucion(id) ON DELETE CASCADE,
+    id_archivo UUID NOT NULL REFERENCES sia.archivo(id) ON DELETE CASCADE,
+
+    modulo VARCHAR(50) NOT NULL,
+    entidad VARCHAR(50) NOT NULL,
+    id_entidad UUID NOT NULL,
+
+    tipo_referencia VARCHAR(30) NOT NULL CHECK (
+        tipo_referencia IN ('LOGO', 'FOTO_PERFIL', 'EVIDENCIA', 'DOCUMENTO', 'ADJUNTO')
+    ),
+
+    es_principal BOOLEAN NOT NULL DEFAULT FALSE,
+    orden_visual INTEGER,
+    observacion VARCHAR(255),
+    estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (
+        estado IN ('ACTIVO', 'INACTIVO')
+    ),
+
+    creado_en TIMESTAMP NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Índices de archivo
+CREATE INDEX idx_archivo_institucion ON sia.archivo(id_institucion);
+CREATE INDEX idx_archivo_usuario_subio ON sia.archivo(id_usuario_subio);
+CREATE INDEX idx_archivo_categoria ON sia.archivo(categoria);
+CREATE INDEX idx_archivo_estado ON sia.archivo(estado);
+CREATE INDEX idx_archivo_key_s3 ON sia.archivo(key_s3);
+
+-- Índices de archivo_referencia
+CREATE INDEX idx_archivo_referencia_institucion ON sia.archivo_referencia(id_institucion);
+CREATE INDEX idx_archivo_referencia_archivo ON sia.archivo_referencia(id_archivo);
+CREATE INDEX idx_archivo_referencia_entidad ON sia.archivo_referencia(modulo, entidad, id_entidad);
+CREATE INDEX idx_archivo_referencia_tipo ON sia.archivo_referencia(tipo_referencia);
+
+-- Un mismo archivo no se repite activo sobre la misma entidad con el mismo tipo
+CREATE UNIQUE INDEX uq_archivo_referencia_activa
+    ON sia.archivo_referencia(id_institucion, id_archivo, modulo, entidad, id_entidad, tipo_referencia)
+    WHERE estado = 'ACTIVO';
+
+-- Solo un archivo principal activo por tipo y entidad
+CREATE UNIQUE INDEX uq_archivo_referencia_principal
+    ON sia.archivo_referencia(id_institucion, modulo, entidad, id_entidad, tipo_referencia)
+    WHERE es_principal = TRUE AND estado = 'ACTIVO';
+
+-- Triggers
+CREATE TRIGGER trg_archivo_actualizado_en
+    BEFORE UPDATE ON sia.archivo
+    FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
+
+CREATE TRIGGER trg_archivo_referencia_actualizado_en
+    BEFORE UPDATE ON sia.archivo_referencia
+    FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
+
 CREATE TRIGGER trg_materia_actualizado_en
     BEFORE UPDATE ON materia
     FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();

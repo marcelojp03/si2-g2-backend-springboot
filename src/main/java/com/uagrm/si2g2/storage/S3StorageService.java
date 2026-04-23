@@ -1,12 +1,12 @@
 package com.uagrm.si2g2.storage;
 
 import com.uagrm.si2g2.storage.dto.ArchivoSubidoResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
@@ -17,6 +17,7 @@ import java.util.UUID;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class S3StorageService {
 
     private static final long MAX_BYTES = 10L * 1024 * 1024; // 10 MB
@@ -42,13 +43,6 @@ public class S3StorageService {
     private String region;
 
     private final S3Client s3;
-
-    public S3StorageService(@Value("${app.aws.s3.region}") String region) {
-        this.region = region;
-        this.s3 = S3Client.builder()
-                .region(Region.of(region))
-                .build();
-    }
 
     public ArchivoSubidoResponse subir(MultipartFile archivo, String idInstitucion, String carpeta) {
         validarCarpeta(carpeta);
