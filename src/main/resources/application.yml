@@ -21,6 +21,10 @@ spring:
       additional-paths: src/main/java
     livereload:
       enabled: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 server:
   port: 2026
@@ -45,3 +49,7 @@ app:
     apellidos: ${SUPER_ADMIN_APELLIDOS:Admin}
   cors:
     allowed-origins: http://localhost:4200,http://localhost:3000
+  aws:
+    s3:
+      bucket: ${S3_BUCKET:sia-archivos}
+      region: ${AWS_REGION:us-east-1}
