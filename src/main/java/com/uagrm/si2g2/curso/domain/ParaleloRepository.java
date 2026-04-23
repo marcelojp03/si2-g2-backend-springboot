@@ -12,9 +12,9 @@ public interface ParaleloRepository extends JpaRepository<Paralelo, UUID> {
 
     List<Paralelo> findAllByIdInstitucionAndIdCurso(UUID idInstitucion, UUID idCurso);
 
-    List<Paralelo> findAllByIdInstitucionAndIdGestion(UUID idInstitucion, UUID idGestion);
+    List<Paralelo> findAllByIdInstitucionAndIdGestionAcademica(UUID idInstitucion, UUID idGestionAcademica);
 
     Optional<Paralelo> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
 
-    boolean existsByIdInstitucionAndIdCursoAndNombreAndIdGestion(UUID idInstitucion, UUID idCurso, String nombre, UUID idGestion);
+    boolean existsByIdInstitucionAndIdCursoAndNombreAndIdGestionAcademica(UUID idInstitucion, UUID idCurso, String nombre, UUID idGestionAcademica);
 }

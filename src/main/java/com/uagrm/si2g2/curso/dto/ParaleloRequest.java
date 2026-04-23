@@ -15,7 +15,7 @@ public class ParaleloRequest {
     private UUID idCurso;
 
     @NotNull
-    private UUID idGestion;
+    private UUID idGestionAcademica;
 
     @NotBlank
     @Size(max = 20)

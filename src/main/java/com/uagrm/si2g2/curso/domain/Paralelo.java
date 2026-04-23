@@ -26,8 +26,8 @@ public class Paralelo extends BaseEntity {
     @Column(name = "id_curso", nullable = false)
     private UUID idCurso;
 
-    @Column(name = "id_gestion", nullable = false)
-    private UUID idGestion;
+    @Column(name = "id_gestion_academica", nullable = false)
+    private UUID idGestionAcademica;
 
     @Column(name = "nombre", nullable = false, length = 20)
     private String nombre;

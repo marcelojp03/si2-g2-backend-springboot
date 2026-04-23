@@ -1,9 +1,9 @@
 package com.uagrm.si2g2.institucion.domain;
 
-import com.uagrm.si2g2.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -13,8 +13,8 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = false, of = "id")
-public class ConfiguracionInstitucion extends BaseEntity {
+@EqualsAndHashCode(of = "id")
+public class ConfiguracionInstitucion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -35,4 +35,21 @@ public class ConfiguracionInstitucion extends BaseEntity {
 
     @Column(name = "descripcion", length = 255)
     private String descripcion;
+
+    @Column(name = "creado_en", nullable = false, updatable = false)
+    private Instant creadoEn;
+
+    @Column(name = "actualizado_en", nullable = false)
+    private Instant actualizadoEn;
+
+    @PrePersist
+    protected void onCreate() {
+        creadoEn = Instant.now();
+        actualizadoEn = Instant.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        actualizadoEn = Instant.now();
+    }
 }

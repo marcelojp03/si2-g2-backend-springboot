@@ -14,7 +14,7 @@ public class ParaleloResponse {
     private UUID id;
     private UUID idInstitucion;
     private UUID idCurso;
-    private UUID idGestion;
+    private UUID idGestionAcademica;
     private String nombre;
     private Integer capacidad;
     private String estado;
@@ -26,7 +26,7 @@ public class ParaleloResponse {
                 .id(p.getId())
                 .idInstitucion(p.getIdInstitucion())
                 .idCurso(p.getIdCurso())
-                .idGestion(p.getIdGestion())
+                .idGestionAcademica(p.getIdGestionAcademica())
                 .nombre(p.getNombre())
                 .capacidad(p.getCapacidad())
                 .estado(p.getEstado())

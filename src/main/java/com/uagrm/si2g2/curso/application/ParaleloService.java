@@ -23,15 +23,15 @@ public class ParaleloService {
     @Transactional
     public ParaleloResponse crear(ParaleloRequest request) {
         UUID idInstitucion = TenantContext.get();
-        if (repository.existsByIdInstitucionAndIdCursoAndNombreAndIdGestion(
-                idInstitucion, request.getIdCurso(), request.getNombre(), request.getIdGestion())) {
+        if (repository.existsByIdInstitucionAndIdCursoAndNombreAndIdGestionAcademica(
+                idInstitucion, request.getIdCurso(), request.getNombre(), request.getIdGestionAcademica())) {
             throw new IllegalStateException(
                     "Ya existe el paralelo '" + request.getNombre() + "' para ese curso y gestión");
         }
         Paralelo p = Paralelo.builder()
                 .idInstitucion(idInstitucion)
                 .idCurso(request.getIdCurso())
-                .idGestion(request.getIdGestion())
+                .idGestionAcademica(request.getIdGestionAcademica())
                 .nombre(request.getNombre())
                 .capacidad(request.getCapacidad())
                 .build();
@@ -59,13 +59,13 @@ public class ParaleloService {
         UUID idInstitucion = TenantContext.get();
         Paralelo p = buscar(id);
         if (!p.getNombre().equals(request.getNombre())
-                && repository.existsByIdInstitucionAndIdCursoAndNombreAndIdGestion(
-                        idInstitucion, request.getIdCurso(), request.getNombre(), request.getIdGestion())) {
+                && repository.existsByIdInstitucionAndIdCursoAndNombreAndIdGestionAcademica(
+                        idInstitucion, request.getIdCurso(), request.getNombre(), request.getIdGestionAcademica())) {
             throw new IllegalStateException(
                     "Ya existe el paralelo '" + request.getNombre() + "' para ese curso y gestión");
         }
         p.setIdCurso(request.getIdCurso());
-        p.setIdGestion(request.getIdGestion());
+        p.setIdGestionAcademica(request.getIdGestionAcademica());
         p.setNombre(request.getNombre());
         p.setCapacidad(request.getCapacidad());
         return ParaleloResponse.from(repository.save(p));
