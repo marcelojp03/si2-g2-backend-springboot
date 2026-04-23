@@ -15,7 +15,7 @@ public class MateriaResponse {
     private UUID idInstitucion;
     private String codigo;
     private String nombre;
-    private String descripcion;
+    private String area;
     private Integer cargaHoraria;
     private String estado;
     private Instant creadoEn;
@@ -27,7 +27,7 @@ public class MateriaResponse {
                 .idInstitucion(m.getIdInstitucion())
                 .codigo(m.getCodigo())
                 .nombre(m.getNombre())
-                .descripcion(m.getDescripcion())
+                .area(m.getArea())
                 .cargaHoraria(m.getCargaHoraria())
                 .estado(m.getEstado())
                 .creadoEn(m.getCreadoEn())

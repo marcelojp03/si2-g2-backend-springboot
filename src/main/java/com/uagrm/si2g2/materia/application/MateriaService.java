@@ -30,7 +30,7 @@ public class MateriaService {
                 .idInstitucion(idInstitucion)
                 .codigo(request.getCodigo())
                 .nombre(request.getNombre())
-                .descripcion(request.getDescripcion())
+                .area(request.getArea())
                 .cargaHoraria(request.getCargaHoraria())
                 .build();
         return MateriaResponse.from(repository.save(m));
@@ -57,7 +57,7 @@ public class MateriaService {
         }
         m.setCodigo(request.getCodigo());
         m.setNombre(request.getNombre());
-        m.setDescripcion(request.getDescripcion());
+        m.setArea(request.getArea());
         m.setCargaHoraria(request.getCargaHoraria());
         return MateriaResponse.from(repository.save(m));
     }

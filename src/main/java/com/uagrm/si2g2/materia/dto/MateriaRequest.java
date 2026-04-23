@@ -16,7 +16,7 @@ public class MateriaRequest {
     @Size(max = 100)
     private String nombre;
 
-    private String descripcion;
+    private String area;
 
     @Min(1)
     private Integer cargaHoraria;

@@ -29,8 +29,8 @@ public class Materia extends BaseEntity {
     @Column(name = "nombre", nullable = false, length = 100)
     private String nombre;
 
-    @Column(name = "descripcion")
-    private String descripcion;
+    @Column(name = "area", length = 100)
+    private String area;
 
     @Column(name = "carga_horaria")
     private Integer cargaHoraria;
