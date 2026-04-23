@@ -11,8 +11,9 @@ public class CursoRequest {
     @Size(max = 100)
     private String nombre;
 
+    @Size(max = 30)
+    private String codigo;
+
     @Size(max = 50)
     private String nivel;
-
-    private String descripcion;
 }

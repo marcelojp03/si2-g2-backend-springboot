@@ -13,9 +13,9 @@ public class CursoResponse {
 
     private UUID id;
     private UUID idInstitucion;
+    private String codigo;
     private String nombre;
     private String nivel;
-    private String descripcion;
     private String estado;
     private Instant creadoEn;
     private Instant actualizadoEn;
@@ -24,9 +24,9 @@ public class CursoResponse {
         return CursoResponse.builder()
                 .id(c.getId())
                 .idInstitucion(c.getIdInstitucion())
+                .codigo(c.getCodigo())
                 .nombre(c.getNombre())
                 .nivel(c.getNivel())
-                .descripcion(c.getDescripcion())
                 .estado(c.getEstado())
                 .creadoEn(c.getCreadoEn())
                 .actualizadoEn(c.getActualizadoEn())

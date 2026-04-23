@@ -23,14 +23,14 @@ public class Curso extends BaseEntity {
     @Column(name = "id_institucion", nullable = false)
     private UUID idInstitucion;
 
+    @Column(name = "codigo", length = 30)
+    private String codigo;
+
     @Column(name = "nombre", nullable = false, length = 100)
     private String nombre;
 
     @Column(name = "nivel", length = 50)
     private String nivel;
-
-    @Column(name = "descripcion")
-    private String descripcion;
 
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 15)

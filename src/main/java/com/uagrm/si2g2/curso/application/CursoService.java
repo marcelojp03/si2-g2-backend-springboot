@@ -28,9 +28,9 @@ public class CursoService {
         }
         Curso curso = Curso.builder()
                 .idInstitucion(idInstitucion)
+                .codigo(request.getCodigo())
                 .nombre(request.getNombre())
                 .nivel(request.getNivel())
-                .descripcion(request.getDescripcion())
                 .build();
         return CursoResponse.from(repository.save(curso));
     }
@@ -54,9 +54,9 @@ public class CursoService {
                 && repository.existsByIdInstitucionAndNombre(idInstitucion, request.getNombre())) {
             throw new IllegalStateException("Ya existe un curso con el nombre: " + request.getNombre());
         }
+        curso.setCodigo(request.getCodigo());
         curso.setNombre(request.getNombre());
         curso.setNivel(request.getNivel());
-        curso.setDescripcion(request.getDescripcion());
         return CursoResponse.from(repository.save(curso));
     }
 
