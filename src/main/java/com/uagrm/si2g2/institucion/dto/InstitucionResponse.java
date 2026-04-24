@@ -18,7 +18,6 @@ public class InstitucionResponse {
     private String telefono;
     private String correo;
     private String direccion;
-    private String logoUrl;
     private String estado;
     private Instant creadoEn;
     private Instant actualizadoEn;
@@ -32,7 +31,6 @@ public class InstitucionResponse {
                 .telefono(i.getTelefono())
                 .correo(i.getCorreo())
                 .direccion(i.getDireccion())
-                .logoUrl(i.getLogoUrl())
                 .estado(i.getEstado())
                 .creadoEn(i.getCreadoEn())
                 .actualizadoEn(i.getActualizadoEn())

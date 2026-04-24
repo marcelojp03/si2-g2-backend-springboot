@@ -1,5 +1,7 @@
 package com.uagrm.si2g2.curso.application;
 
+import com.uagrm.si2g2.auditoria.application.AuditoriaService;
+import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.curso.domain.Paralelo;
 import com.uagrm.si2g2.curso.domain.ParaleloRepository;
 import com.uagrm.si2g2.curso.dto.ParaleloRequest;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 public class ParaleloService {
 
     private final ParaleloRepository repository;
+    private final AuditoriaService auditoriaService;
 
     @Transactional
     public ParaleloResponse crear(ParaleloRequest request) {
@@ -35,7 +38,11 @@ public class ParaleloService {
                 .nombre(request.getNombre())
                 .capacidad(request.getCapacidad())
                 .build();
-        return ParaleloResponse.from(repository.save(p));
+        ParaleloResponse resp = ParaleloResponse.from(repository.save(p));
+        auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
+                "CURSO", "CREAR_PARALELO", "paralelo", resp.getId().toString(),
+                true, "Paralelo creado: " + resp.getNombre());
+        return resp;
     }
 
     @Transactional(readOnly = true)
@@ -68,7 +75,11 @@ public class ParaleloService {
         p.setIdGestionAcademica(request.getIdGestionAcademica());
         p.setNombre(request.getNombre());
         p.setCapacidad(request.getCapacidad());
-        return ParaleloResponse.from(repository.save(p));
+        ParaleloResponse resp = ParaleloResponse.from(repository.save(p));
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "CURSO", "ACTUALIZAR_PARALELO", "paralelo", id.toString(),
+                true, "Paralelo actualizado: " + resp.getNombre());
+        return resp;
     }
 
     @Transactional
@@ -76,6 +87,9 @@ public class ParaleloService {
         Paralelo p = buscar(id);
         p.setEstado("INACTIVO");
         repository.save(p);
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "CURSO", "ELIMINAR_PARALELO", "paralelo", id.toString(),
+                true, "Paralelo desactivado: " + p.getNombre());
     }
 
     private Paralelo buscar(UUID id) {

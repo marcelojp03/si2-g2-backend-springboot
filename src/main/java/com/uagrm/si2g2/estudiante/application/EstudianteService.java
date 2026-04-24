@@ -1,5 +1,11 @@
 package com.uagrm.si2g2.estudiante.application;
 
+import com.uagrm.si2g2.auditoria.application.AuditoriaService;
+import com.uagrm.si2g2.auth.domain.Rol;
+import com.uagrm.si2g2.auth.domain.RolRepository;
+import com.uagrm.si2g2.auth.domain.Usuario;
+import com.uagrm.si2g2.auth.domain.UsuarioRepository;
+import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.estudiante.domain.Estudiante;
 import com.uagrm.si2g2.estudiante.domain.EstudianteRepository;
 import com.uagrm.si2g2.estudiante.dto.EstudianteRequest;
@@ -7,10 +13,12 @@ import com.uagrm.si2g2.estudiante.dto.EstudianteResponse;
 import com.uagrm.si2g2.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -19,6 +27,10 @@ import java.util.stream.Collectors;
 public class EstudianteService {
 
     private final EstudianteRepository repository;
+    private final UsuarioRepository usuarioRepository;
+    private final RolRepository rolRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AuditoriaService auditoriaService;
 
     @Transactional
     public EstudianteResponse crear(EstudianteRequest request) {
@@ -26,9 +38,25 @@ public class EstudianteService {
         if (repository.existsByIdInstitucionAndCodigoEstudiante(idInstitucion, request.getCodigoEstudiante())) {
             throw new IllegalStateException("Ya existe un estudiante con el código: " + request.getCodigoEstudiante());
         }
+        if (usuarioRepository.existsByCorreo(request.getCorreo())) {
+            throw new IllegalStateException("Ya existe un usuario con el correo: " + request.getCorreo());
+        }
+        Rol rol = rolRepository.findByCodigo("ESTUDIANTE")
+                .orElseThrow(() -> new IllegalStateException("Rol ESTUDIANTE no encontrado"));
+        Usuario usuario = Usuario.builder()
+                .idInstitucion(idInstitucion)
+                .correo(request.getCorreo())
+                .hashContrasena(passwordEncoder.encode(request.getDocumentoIdentidad()))
+                .nombres(request.getNombres())
+                .apellidos(request.getApellidos())
+                .telefono(request.getTelefono())
+                .roles(Set.of(rol))
+                .requiereCambioContrasena(false)
+                .build();
+        usuarioRepository.save(usuario);
         Estudiante e = Estudiante.builder()
                 .idInstitucion(idInstitucion)
-                .idUsuario(request.getIdUsuario())
+                .idUsuario(usuario.getId())
                 .codigoEstudiante(request.getCodigoEstudiante())
                 .documentoIdentidad(request.getDocumentoIdentidad())
                 .nombres(request.getNombres())
@@ -39,7 +67,11 @@ public class EstudianteService {
                 .telefono(request.getTelefono())
                 .correo(request.getCorreo())
                 .build();
-        return EstudianteResponse.from(repository.save(e));
+        EstudianteResponse resp = EstudianteResponse.from(repository.save(e));
+        auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
+                "ESTUDIANTE", "CREAR", "estudiante", resp.getId().toString(),
+                true, "Estudiante creado: " + resp.getCodigoEstudiante());
+        return resp;
     }
 
     @Transactional(readOnly = true)
@@ -61,7 +93,6 @@ public class EstudianteService {
                 && repository.existsByIdInstitucionAndCodigoEstudiante(idInstitucion, request.getCodigoEstudiante())) {
             throw new IllegalStateException("Ya existe un estudiante con el código: " + request.getCodigoEstudiante());
         }
-        e.setIdUsuario(request.getIdUsuario());
         e.setCodigoEstudiante(request.getCodigoEstudiante());
         e.setDocumentoIdentidad(request.getDocumentoIdentidad());
         e.setNombres(request.getNombres());
@@ -71,7 +102,11 @@ public class EstudianteService {
         e.setDireccion(request.getDireccion());
         e.setTelefono(request.getTelefono());
         e.setCorreo(request.getCorreo());
-        return EstudianteResponse.from(repository.save(e));
+        EstudianteResponse resp = EstudianteResponse.from(repository.save(e));
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "ESTUDIANTE", "ACTUALIZAR", "estudiante", id.toString(),
+                true, "Estudiante actualizado: " + resp.getCodigoEstudiante());
+        return resp;
     }
 
     @Transactional
@@ -79,6 +114,9 @@ public class EstudianteService {
         Estudiante e = buscar(id);
         e.setEstado("INACTIVO");
         repository.save(e);
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "ESTUDIANTE", "ELIMINAR", "estudiante", id.toString(),
+                true, "Estudiante desactivado: " + e.getCodigoEstudiante());
     }
 
     private Estudiante buscar(UUID id) {

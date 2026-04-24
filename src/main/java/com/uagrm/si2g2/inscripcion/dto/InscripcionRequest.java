@@ -16,9 +16,6 @@ public class InscripcionRequest {
     private UUID idGestion;
 
     @NotNull
-    private UUID idCurso;
-
-    @NotNull
     private UUID idParalelo;
 
     private LocalDate fechaInscripcion;

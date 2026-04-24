@@ -14,10 +14,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -48,7 +53,11 @@ public class ArchivoService {
     @Value("${app.aws.s3.region}")
     private String region;
 
+    @Value("${app.aws.s3.presigned-url-expiration-minutes:60}")
+    private int presignedUrlExpirationMinutes;
+
     private final S3Client s3;
+    private final S3Presigner s3Presigner;
     private final ArchivoRepository archivoRepository;
     private final ArchivoReferenciaRepository archivoReferenciaRepository;
 
@@ -191,8 +200,22 @@ public class ArchivoService {
         return carpeta + "/" + idInstitucion + "/" + nombreArchivo;
     }
 
-    private String buildUrl(String key) {
-        return "https://" + bucket + ".s3." + region + ".amazonaws.com/" + key;
+    private String generarUrlFirmada(String key) {
+        try {
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build();
+            GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofMinutes(presignedUrlExpirationMinutes))
+                    .getObjectRequest(getObjectRequest)
+                    .build();
+            PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);
+            return presigned.url().toString();
+        } catch (Exception e) {
+            log.error("Error generando URL firmada para key={}: {}", key, e.getMessage());
+            return null;
+        }
     }
 
     private ArchivoResponse toResponse(Archivo a, ArchivoReferencia ref) {
@@ -204,7 +227,7 @@ public class ArchivoService {
                 .extension(a.getExtension())
                 .categoria(a.getCategoria())
                 .visibilidad(a.getVisibilidad())
-                .url(buildUrl(a.getKeyS3()))
+                .url(generarUrlFirmada(a.getKeyS3()))
                 .modulo(ref.getModulo())
                 .entidad(ref.getEntidad())
                 .idEntidad(ref.getIdEntidad())

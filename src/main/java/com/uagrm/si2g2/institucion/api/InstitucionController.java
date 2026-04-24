@@ -66,4 +66,13 @@ public class InstitucionController {
         return ResponseEntity.ok(ApiResponse.ok("Configuración guardada",
                 service.guardarConfiguracion(id, request)));
     }
+
+    @DeleteMapping("/{id}/configuraciones/{clave}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_INSTITUCION','DIRECTOR','SECRETARIO')")
+    public ResponseEntity<ApiResponse<Void>> eliminarConfiguracion(
+            @PathVariable UUID id,
+            @PathVariable String clave) {
+        service.eliminarConfiguracion(id, clave);
+        return ResponseEntity.ok(ApiResponse.ok("Configuración eliminada", null));
+    }
 }

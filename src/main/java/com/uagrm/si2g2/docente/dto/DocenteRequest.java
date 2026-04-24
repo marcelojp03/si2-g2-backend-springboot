@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-import java.util.UUID;
-
 @Data
 public class DocenteRequest {
 
@@ -14,6 +12,7 @@ public class DocenteRequest {
     @Size(max = 30)
     private String codigo;
 
+    @NotBlank
     @Size(max = 20)
     private String documentoIdentidad;
 
@@ -28,13 +27,11 @@ public class DocenteRequest {
     @Size(max = 20)
     private String telefono;
 
+    @NotBlank
     @Email
     @Size(max = 150)
     private String correo;
 
     @Size(max = 150)
     private String especialidad;
-
-    /** Opcional: vincular con usuario del sistema */
-    private UUID idUsuario;
 }

@@ -4,7 +4,6 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Data
 public class EstudianteRequest {
@@ -13,6 +12,7 @@ public class EstudianteRequest {
     @Size(max = 30)
     private String codigoEstudiante;
 
+    @NotBlank
     @Size(max = 20)
     private String documentoIdentidad;
 
@@ -34,10 +34,8 @@ public class EstudianteRequest {
     @Size(max = 20)
     private String telefono;
 
+    @NotBlank
     @Email
     @Size(max = 150)
     private String correo;
-
-    /** Opcional: vincular con usuario del sistema */
-    private UUID idUsuario;
 }

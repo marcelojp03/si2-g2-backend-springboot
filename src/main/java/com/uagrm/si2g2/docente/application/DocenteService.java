@@ -1,5 +1,11 @@
 package com.uagrm.si2g2.docente.application;
 
+import com.uagrm.si2g2.auditoria.application.AuditoriaService;
+import com.uagrm.si2g2.auth.domain.Rol;
+import com.uagrm.si2g2.auth.domain.RolRepository;
+import com.uagrm.si2g2.auth.domain.Usuario;
+import com.uagrm.si2g2.auth.domain.UsuarioRepository;
+import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.docente.domain.Docente;
 import com.uagrm.si2g2.docente.domain.DocenteRepository;
 import com.uagrm.si2g2.docente.dto.DocenteRequest;
@@ -7,10 +13,12 @@ import com.uagrm.si2g2.docente.dto.DocenteResponse;
 import com.uagrm.si2g2.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -19,6 +27,10 @@ import java.util.stream.Collectors;
 public class DocenteService {
 
     private final DocenteRepository repository;
+    private final UsuarioRepository usuarioRepository;
+    private final RolRepository rolRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AuditoriaService auditoriaService;
 
     @Transactional
     public DocenteResponse crear(DocenteRequest request) {
@@ -26,9 +38,25 @@ public class DocenteService {
         if (repository.existsByIdInstitucionAndCodigo(idInstitucion, request.getCodigo())) {
             throw new IllegalStateException("Ya existe un docente con el código: " + request.getCodigo());
         }
+        if (usuarioRepository.existsByCorreo(request.getCorreo())) {
+            throw new IllegalStateException("Ya existe un usuario con el correo: " + request.getCorreo());
+        }
+        Rol rol = rolRepository.findByCodigo("DOCENTE")
+                .orElseThrow(() -> new IllegalStateException("Rol DOCENTE no encontrado"));
+        Usuario usuario = Usuario.builder()
+                .idInstitucion(idInstitucion)
+                .correo(request.getCorreo())
+                .hashContrasena(passwordEncoder.encode(request.getDocumentoIdentidad()))
+                .nombres(request.getNombres())
+                .apellidos(request.getApellidos())
+                .telefono(request.getTelefono())
+                .roles(Set.of(rol))
+                .requiereCambioContrasena(false)
+                .build();
+        usuarioRepository.save(usuario);
         Docente d = Docente.builder()
                 .idInstitucion(idInstitucion)
-                .idUsuario(request.getIdUsuario())
+                .idUsuario(usuario.getId())
                 .codigo(request.getCodigo())
                 .documentoIdentidad(request.getDocumentoIdentidad())
                 .nombres(request.getNombres())
@@ -37,7 +65,11 @@ public class DocenteService {
                 .correo(request.getCorreo())
                 .especialidad(request.getEspecialidad())
                 .build();
-        return DocenteResponse.from(repository.save(d));
+        DocenteResponse resp = DocenteResponse.from(repository.save(d));
+        auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
+                "DOCENTE", "CREAR", "docente", resp.getId().toString(),
+                true, "Docente creado: " + resp.getCodigo());
+        return resp;
     }
 
     @Transactional(readOnly = true)
@@ -59,7 +91,6 @@ public class DocenteService {
                 && repository.existsByIdInstitucionAndCodigo(idInstitucion, request.getCodigo())) {
             throw new IllegalStateException("Ya existe un docente con el código: " + request.getCodigo());
         }
-        d.setIdUsuario(request.getIdUsuario());
         d.setCodigo(request.getCodigo());
         d.setDocumentoIdentidad(request.getDocumentoIdentidad());
         d.setNombres(request.getNombres());
@@ -67,7 +98,11 @@ public class DocenteService {
         d.setTelefono(request.getTelefono());
         d.setCorreo(request.getCorreo());
         d.setEspecialidad(request.getEspecialidad());
-        return DocenteResponse.from(repository.save(d));
+        DocenteResponse resp = DocenteResponse.from(repository.save(d));
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "DOCENTE", "ACTUALIZAR", "docente", id.toString(),
+                true, "Docente actualizado: " + resp.getCodigo());
+        return resp;
     }
 
     @Transactional
@@ -75,6 +110,9 @@ public class DocenteService {
         Docente d = buscar(id);
         d.setEstado("INACTIVO");
         repository.save(d);
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "DOCENTE", "ELIMINAR", "docente", id.toString(),
+                true, "Docente desactivado: " + d.getCodigo());
     }
 
     private Docente buscar(UUID id) {

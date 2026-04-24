@@ -1,5 +1,7 @@
 package com.uagrm.si2g2.curso.application;
 
+import com.uagrm.si2g2.auditoria.application.AuditoriaService;
+import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.curso.domain.Curso;
 import com.uagrm.si2g2.curso.domain.CursoRepository;
 import com.uagrm.si2g2.curso.dto.CursoRequest;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 public class CursoService {
 
     private final CursoRepository repository;
+    private final AuditoriaService auditoriaService;
 
     @Transactional
     public CursoResponse crear(CursoRequest request) {
@@ -32,7 +35,11 @@ public class CursoService {
                 .nombre(request.getNombre())
                 .nivel(request.getNivel())
                 .build();
-        return CursoResponse.from(repository.save(curso));
+        CursoResponse resp = CursoResponse.from(repository.save(curso));
+        auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
+                "CURSO", "CREAR", "curso", resp.getId().toString(),
+                true, "Curso creado: " + resp.getNombre());
+        return resp;
     }
 
     @Transactional(readOnly = true)
@@ -57,7 +64,11 @@ public class CursoService {
         curso.setCodigo(request.getCodigo());
         curso.setNombre(request.getNombre());
         curso.setNivel(request.getNivel());
-        return CursoResponse.from(repository.save(curso));
+        CursoResponse resp = CursoResponse.from(repository.save(curso));
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "CURSO", "ACTUALIZAR", "curso", id.toString(),
+                true, "Curso actualizado: " + resp.getNombre());
+        return resp;
     }
 
     @Transactional
@@ -65,6 +76,9 @@ public class CursoService {
         Curso curso = buscar(id);
         curso.setEstado("INACTIVO");
         repository.save(curso);
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "CURSO", "ELIMINAR", "curso", id.toString(),
+                true, "Curso desactivado: " + curso.getNombre());
     }
 
     private Curso buscar(UUID id) {

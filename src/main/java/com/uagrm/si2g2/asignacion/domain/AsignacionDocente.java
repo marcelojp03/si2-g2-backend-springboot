@@ -32,10 +32,10 @@ public class AsignacionDocente extends BaseEntity {
     @Column(name = "id_paralelo", nullable = false)
     private UUID idParalelo;
 
-    @Column(name = "id_gestion", nullable = false)
+    @Column(name = "id_gestion_academica", nullable = false)
     private UUID idGestion;
 
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 15)
-    protected String estado = "ACTIVO";
+    protected String estado = "ACTIVA";
 }

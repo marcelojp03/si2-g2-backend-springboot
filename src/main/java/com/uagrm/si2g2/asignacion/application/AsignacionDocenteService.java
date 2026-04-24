@@ -1,5 +1,7 @@
 package com.uagrm.si2g2.asignacion.application;
 
+import com.uagrm.si2g2.auditoria.application.AuditoriaService;
+import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.asignacion.domain.AsignacionDocente;
 import com.uagrm.si2g2.asignacion.domain.AsignacionDocenteRepository;
 import com.uagrm.si2g2.asignacion.dto.AsignacionDocenteRequest;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 public class AsignacionDocenteService {
 
     private final AsignacionDocenteRepository repository;
+    private final AuditoriaService auditoriaService;
 
     @Transactional
     public AsignacionDocenteResponse asignar(AsignacionDocenteRequest request) {
@@ -36,7 +39,11 @@ public class AsignacionDocenteService {
                 .idParalelo(request.getIdParalelo())
                 .idGestion(request.getIdGestion())
                 .build();
-        return AsignacionDocenteResponse.from(repository.save(a));
+        AsignacionDocenteResponse resp = AsignacionDocenteResponse.from(repository.save(a));
+        auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
+                "ASIGNACION", "ASIGNAR", "asignacion_docente", resp.getId().toString(),
+                true, "Docente asignado al paralelo: " + request.getIdParalelo());
+        return resp;
     }
 
     @Transactional(readOnly = true)
@@ -66,8 +73,11 @@ public class AsignacionDocenteService {
     @Transactional
     public void eliminar(UUID id) {
         AsignacionDocente a = buscar(id);
-        a.setEstado("INACTIVO");
+        a.setEstado("INACTIVA");
         repository.save(a);
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "ASIGNACION", "ELIMINAR", "asignacion_docente", id.toString(),
+                true, "Asignación desactivada");
     }
 
     private AsignacionDocente buscar(UUID id) {

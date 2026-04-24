@@ -1,5 +1,7 @@
 package com.uagrm.si2g2.institucion.application;
 
+import com.uagrm.si2g2.auditoria.application.AuditoriaService;
+import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.institucion.domain.ConfiguracionInstitucion;
 import com.uagrm.si2g2.institucion.domain.ConfiguracionInstitucionRepository;
 import com.uagrm.si2g2.institucion.domain.Institucion;
@@ -23,6 +25,7 @@ public class InstitucionService {
 
     private final InstitucionRepository institucionRepository;
     private final ConfiguracionInstitucionRepository configuracionRepository;
+    private final AuditoriaService auditoriaService;
 
     @Transactional
     public InstitucionResponse crear(InstitucionRequest request) {
@@ -36,9 +39,12 @@ public class InstitucionService {
                 .telefono(request.getTelefono())
                 .correo(request.getCorreo())
                 .direccion(request.getDireccion())
-                .logoUrl(request.getLogoUrl())
                 .build();
-        return InstitucionResponse.from(institucionRepository.save(inst));
+        InstitucionResponse resp = InstitucionResponse.from(institucionRepository.save(inst));
+        auditoriaService.registrar(resp.getId(), SecurityUtils.currentUserId(),
+                "INSTITUCION", "CREAR", "institucion", resp.getId().toString(),
+                true, "Institución creada: " + resp.getCodigo());
+        return resp;
     }
 
     @Transactional(readOnly = true)
@@ -71,8 +77,11 @@ public class InstitucionService {
         inst.setTelefono(request.getTelefono());
         inst.setCorreo(request.getCorreo());
         inst.setDireccion(request.getDireccion());
-        inst.setLogoUrl(request.getLogoUrl());
-        return InstitucionResponse.from(institucionRepository.save(inst));
+        InstitucionResponse resp = InstitucionResponse.from(institucionRepository.save(inst));
+        auditoriaService.registrar(id, SecurityUtils.currentUserId(),
+                "INSTITUCION", "ACTUALIZAR", "institucion", id.toString(),
+                true, "Institución actualizada: " + resp.getCodigo());
+        return resp;
     }
 
     // --- Configuración ---
@@ -106,5 +115,17 @@ public class InstitucionService {
         config.setDescripcion(request.getDescripcion());
 
         return ConfiguracionInstitucionResponse.from(configuracionRepository.save(config));
+    }
+
+    @Transactional
+    public void eliminarConfiguracion(UUID idInstitucion, String clave) {
+        if (!institucionRepository.existsById(idInstitucion)) {
+            throw new EntityNotFoundException("Institución no encontrada: " + idInstitucion);
+        }
+        ConfiguracionInstitucion config = configuracionRepository
+                .findByIdInstitucionAndClave(idInstitucion, clave)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Configuración '" + clave + "' no encontrada para la institución"));
+        configuracionRepository.delete(config);
     }
 }

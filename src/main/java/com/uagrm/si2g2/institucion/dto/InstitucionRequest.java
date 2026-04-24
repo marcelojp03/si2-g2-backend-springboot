@@ -29,6 +29,4 @@ public class InstitucionRequest {
 
     @Size(max = 255)
     private String direccion;
-
-    private String logoUrl;
 }

@@ -23,6 +23,9 @@ public class Tutor extends BaseEntity {
     @Column(name = "id_institucion", nullable = false)
     private UUID idInstitucion;
 
+    @Column(name = "id_usuario")
+    private UUID idUsuario;
+
     @Column(name = "documento_identidad", length = 20)
     private String documentoIdentidad;
 
@@ -37,6 +40,9 @@ public class Tutor extends BaseEntity {
 
     @Column(name = "correo", length = 150)
     private String correo;
+
+    @Column(name = "direccion")
+    private String direccion;
 
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 15)

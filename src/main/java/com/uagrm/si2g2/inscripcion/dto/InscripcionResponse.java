@@ -22,13 +22,13 @@ public class InscripcionResponse {
     private String estado;
     private Instant creadoEn;
 
-    public static InscripcionResponse from(Inscripcion i) {
+    public static InscripcionResponse from(Inscripcion i, UUID idCurso) {
         return InscripcionResponse.builder()
                 .id(i.getId())
                 .idInstitucion(i.getIdInstitucion())
                 .idEstudiante(i.getIdEstudiante())
                 .idGestion(i.getIdGestion())
-                .idCurso(i.getIdCurso())
+                .idCurso(idCurso)
                 .idParalelo(i.getIdParalelo())
                 .fechaInscripcion(i.getFechaInscripcion())
                 .estado(i.getEstado())

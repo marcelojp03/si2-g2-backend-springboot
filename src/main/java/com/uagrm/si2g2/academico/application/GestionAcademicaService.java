@@ -1,5 +1,7 @@
 package com.uagrm.si2g2.academico.application;
 
+import com.uagrm.si2g2.auditoria.application.AuditoriaService;
+import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.academico.domain.GestionAcademica;
 import com.uagrm.si2g2.academico.domain.GestionAcademicaRepository;
 import com.uagrm.si2g2.academico.dto.GestionAcademicaRequest;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 public class GestionAcademicaService {
 
     private final GestionAcademicaRepository repository;
+    private final AuditoriaService auditoriaService;
 
     @Transactional
     public GestionAcademicaResponse crear(GestionAcademicaRequest request) {
@@ -36,7 +39,11 @@ public class GestionAcademicaService {
                 .fechaFin(request.getFechaFin())
                 .activa(request.isActiva())
                 .build();
-        return GestionAcademicaResponse.from(repository.save(g));
+        GestionAcademicaResponse resp = GestionAcademicaResponse.from(repository.save(g));
+        auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
+                "ACADEMICO", "CREAR", "gestion_academica", resp.getId().toString(),
+                true, "Gestión creada: " + resp.getNombre());
+        return resp;
     }
 
     @Transactional(readOnly = true)
@@ -67,7 +74,11 @@ public class GestionAcademicaService {
         g.setFechaInicio(request.getFechaInicio());
         g.setFechaFin(request.getFechaFin());
         g.setActiva(request.isActiva());
-        return GestionAcademicaResponse.from(repository.save(g));
+        GestionAcademicaResponse resp = GestionAcademicaResponse.from(repository.save(g));
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "ACADEMICO", "ACTUALIZAR", "gestion_academica", id.toString(),
+                true, "Gestión actualizada: " + resp.getNombre());
+        return resp;
     }
 
     @Transactional
@@ -76,6 +87,9 @@ public class GestionAcademicaService {
         g.setEstado("ANULADA");
         g.setActiva(false);
         repository.save(g);
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "ACADEMICO", "ELIMINAR", "gestion_academica", id.toString(),
+                true, "Gestión anulada: " + g.getNombre());
     }
 
     private GestionAcademica buscar(UUID id) {

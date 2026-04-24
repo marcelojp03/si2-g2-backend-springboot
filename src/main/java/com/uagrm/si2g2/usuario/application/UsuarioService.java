@@ -1,9 +1,11 @@
 package com.uagrm.si2g2.usuario.application;
 
+import com.uagrm.si2g2.auditoria.application.AuditoriaService;
 import com.uagrm.si2g2.auth.domain.Rol;
 import com.uagrm.si2g2.auth.domain.RolRepository;
 import com.uagrm.si2g2.auth.domain.Usuario;
 import com.uagrm.si2g2.auth.domain.UsuarioRepository;
+import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.tenant.TenantContext;
 import com.uagrm.si2g2.usuario.dto.ActualizarUsuarioRequest;
 import com.uagrm.si2g2.usuario.dto.AsignarRolRequest;
@@ -23,6 +25,7 @@ public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
+    private final AuditoriaService auditoriaService;
 
     @Transactional(readOnly = true)
     public List<UsuarioResponse> listar() {
@@ -47,14 +50,22 @@ public class UsuarioService {
         usuario.setNombres(request.getNombres());
         usuario.setApellidos(request.getApellidos());
         usuario.setTelefono(request.getTelefono());
-        return UsuarioResponse.from(usuarioRepository.save(usuario));
+        UsuarioResponse resp = UsuarioResponse.from(usuarioRepository.save(usuario));
+        auditoriaService.registrar(usuario.getIdInstitucion(), SecurityUtils.currentUserId(),
+                "USUARIO", "ACTUALIZAR", "usuario", id.toString(),
+                true, "Usuario actualizado: " + usuario.getCorreo());
+        return resp;
     }
 
     @Transactional
     public UsuarioResponse desactivar(UUID id) {
         Usuario usuario = buscarConAcceso(id);
         usuario.setEstado("INACTIVO");
-        return UsuarioResponse.from(usuarioRepository.save(usuario));
+        UsuarioResponse resp = UsuarioResponse.from(usuarioRepository.save(usuario));
+        auditoriaService.registrar(usuario.getIdInstitucion(), SecurityUtils.currentUserId(),
+                "USUARIO", "DESACTIVAR", "usuario", id.toString(),
+                true, "Usuario desactivado: " + usuario.getCorreo());
+        return resp;
     }
 
     @Transactional
@@ -62,10 +73,13 @@ public class UsuarioService {
         Usuario usuario = buscarConAcceso(id);
         Rol rol = rolRepository.findByCodigo(request.getCodigoRol())
                 .orElseThrow(() -> new EntityNotFoundException("Rol no encontrado: " + request.getCodigoRol()));
-        // Reemplaza todos los roles actuales por el nuevo (un solo rol activo)
         usuario.getRoles().clear();
         usuario.getRoles().add(rol);
-        return UsuarioResponse.from(usuarioRepository.save(usuario));
+        UsuarioResponse resp = UsuarioResponse.from(usuarioRepository.save(usuario));
+        auditoriaService.registrar(usuario.getIdInstitucion(), SecurityUtils.currentUserId(),
+                "USUARIO", "ASIGNAR_ROL", "usuario", id.toString(),
+                true, "Rol asignado: " + request.getCodigoRol());
+        return resp;
     }
 
     private Usuario buscarConAcceso(UUID id) {

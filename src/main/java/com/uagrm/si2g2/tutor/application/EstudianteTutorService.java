@@ -1,5 +1,7 @@
 package com.uagrm.si2g2.tutor.application;
 
+import com.uagrm.si2g2.auditoria.application.AuditoriaService;
+import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.tutor.domain.EstudianteTutor;
 import com.uagrm.si2g2.tutor.domain.EstudianteTutorRepository;
 import com.uagrm.si2g2.tutor.dto.EstudianteTutorRequest;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 public class EstudianteTutorService {
 
     private final EstudianteTutorRepository repository;
+    private final AuditoriaService auditoriaService;
 
     @Transactional
     public EstudianteTutorResponse vincular(UUID idEstudiante, EstudianteTutorRequest request) {
@@ -38,7 +41,12 @@ public class EstudianteTutorService {
                 .parentesco(request.getParentesco())
                 .esPrincipal(request.isEsPrincipal())
                 .build();
-        return EstudianteTutorResponse.from(repository.save(et));
+        EstudianteTutorResponse resp = EstudianteTutorResponse.from(repository.save(et));
+        auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
+                "TUTOR", "VINCULAR", "estudiante_tutor",
+                idEstudiante + "-" + request.getIdTutor(),
+                true, "Tutor vinculado al estudiante");
+        return resp;
     }
 
     @Transactional(readOnly = true)
@@ -55,5 +63,9 @@ public class EstudianteTutorService {
                 .orElseThrow(() -> new EntityNotFoundException("Vínculo no encontrado"));
         et.setEstado("INACTIVO");
         repository.save(et);
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "TUTOR", "DESVINCULAR", "estudiante_tutor",
+                idEstudiante + "-" + idTutor,
+                true, "Tutor desvinculado del estudiante");
     }
 }

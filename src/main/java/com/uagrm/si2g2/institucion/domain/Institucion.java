@@ -38,9 +38,6 @@ public class Institucion extends BaseEntity {
     @Column(name = "direccion", length = 255)
     private String direccion;
 
-    @Column(name = "logo_url")
-    private String logoUrl;
-
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 15)
     protected String estado = "ACTIVO";

@@ -8,6 +8,7 @@ import lombok.Data;
 @Data
 public class TutorRequest {
 
+    @NotBlank
     @Size(max = 20)
     private String documentoIdentidad;
 
@@ -22,7 +23,10 @@ public class TutorRequest {
     @Size(max = 20)
     private String telefono;
 
+    @NotBlank
     @Email
     @Size(max = 150)
     private String correo;
+
+    private String direccion;
 }

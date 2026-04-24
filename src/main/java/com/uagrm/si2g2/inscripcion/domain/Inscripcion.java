@@ -27,11 +27,8 @@ public class Inscripcion extends BaseEntity {
     @Column(name = "id_estudiante", nullable = false)
     private UUID idEstudiante;
 
-    @Column(name = "id_gestion", nullable = false)
+    @Column(name = "id_gestion_academica", nullable = false)
     private UUID idGestion;
-
-    @Column(name = "id_curso", nullable = false)
-    private UUID idCurso;
 
     @Column(name = "id_paralelo", nullable = false)
     private UUID idParalelo;
@@ -41,5 +38,5 @@ public class Inscripcion extends BaseEntity {
 
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 15)
-    protected String estado = "ACTIVO";
+    protected String estado = "ACTIVA";
 }

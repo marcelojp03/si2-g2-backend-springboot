@@ -13,11 +13,13 @@ public class TutorResponse {
 
     private UUID id;
     private UUID idInstitucion;
+    private UUID idUsuario;
     private String documentoIdentidad;
     private String nombres;
     private String apellidos;
     private String telefono;
     private String correo;
+    private String direccion;
     private String estado;
     private Instant creadoEn;
     private Instant actualizadoEn;
@@ -26,11 +28,13 @@ public class TutorResponse {
         return TutorResponse.builder()
                 .id(t.getId())
                 .idInstitucion(t.getIdInstitucion())
+                .idUsuario(t.getIdUsuario())
                 .documentoIdentidad(t.getDocumentoIdentidad())
                 .nombres(t.getNombres())
                 .apellidos(t.getApellidos())
                 .telefono(t.getTelefono())
                 .correo(t.getCorreo())
+                .direccion(t.getDireccion())
                 .estado(t.getEstado())
                 .creadoEn(t.getCreadoEn())
                 .actualizadoEn(t.getActualizadoEn())

@@ -1,5 +1,7 @@
 package com.uagrm.si2g2.materia.application;
 
+import com.uagrm.si2g2.auditoria.application.AuditoriaService;
+import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.materia.domain.Materia;
 import com.uagrm.si2g2.materia.domain.MateriaRepository;
 import com.uagrm.si2g2.materia.dto.MateriaRequest;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 public class MateriaService {
 
     private final MateriaRepository repository;
+    private final AuditoriaService auditoriaService;
 
     @Transactional
     public MateriaResponse crear(MateriaRequest request) {
@@ -33,7 +36,11 @@ public class MateriaService {
                 .area(request.getArea())
                 .cargaHoraria(request.getCargaHoraria())
                 .build();
-        return MateriaResponse.from(repository.save(m));
+        MateriaResponse resp = MateriaResponse.from(repository.save(m));
+        auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
+                "MATERIA", "CREAR", "materia", resp.getId().toString(),
+                true, "Materia creada: " + resp.getCodigo());
+        return resp;
     }
 
     @Transactional(readOnly = true)
@@ -59,7 +66,11 @@ public class MateriaService {
         m.setNombre(request.getNombre());
         m.setArea(request.getArea());
         m.setCargaHoraria(request.getCargaHoraria());
-        return MateriaResponse.from(repository.save(m));
+        MateriaResponse resp = MateriaResponse.from(repository.save(m));
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "MATERIA", "ACTUALIZAR", "materia", id.toString(),
+                true, "Materia actualizada: " + resp.getCodigo());
+        return resp;
     }
 
     @Transactional
@@ -67,6 +78,9 @@ public class MateriaService {
         Materia m = buscar(id);
         m.setEstado("INACTIVO");
         repository.save(m);
+        auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
+                "MATERIA", "ELIMINAR", "materia", id.toString(),
+                true, "Materia desactivada: " + m.getCodigo());
     }
 
     private Materia buscar(UUID id) {
