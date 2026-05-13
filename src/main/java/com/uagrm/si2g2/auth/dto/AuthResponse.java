@@ -12,5 +12,6 @@ public class AuthResponse {
     private String token;
     private String correo;
     private List<String> roles;
+    private List<String> permisos;
     private boolean requiereCambioContrasena;
 }

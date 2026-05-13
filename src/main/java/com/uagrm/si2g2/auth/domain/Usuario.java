@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Entity
 @Table(name = "usuario")
@@ -84,8 +85,13 @@ public class Usuario implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return roles.stream()
-                .map(r -> new SimpleGrantedAuthority("ROLE_" + r.getCodigo()))
+        return Stream.concat(
+                        roles.stream().map(r -> new SimpleGrantedAuthority("ROLE_" + r.getCodigo())),
+                        roles.stream()
+                                .flatMap(rol -> rol.getPermisos().stream())
+                                .map(permiso -> new SimpleGrantedAuthority(permiso.getCodigo()))
+                )
+                .distinct()
                 .collect(Collectors.toList());
     }
 

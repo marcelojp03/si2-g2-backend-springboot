@@ -1,9 +1,9 @@
 package com.uagrm.si2g2.storage;
 
+import com.uagrm.si2g2.config.AppProperties;
 import com.uagrm.si2g2.storage.dto.ArchivoSubidoResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -36,17 +36,14 @@ public class S3StorageService {
             "logos", "estudiantes", "docentes", "examenes", "archivos"
     );
 
-    @Value("${app.aws.s3.bucket}")
-    private String bucket;
-
-    @Value("${app.aws.s3.region}")
-    private String region;
-
     private final S3Client s3;
+    private final AppProperties appProperties;
 
     public ArchivoSubidoResponse subir(MultipartFile archivo, String idInstitucion, String carpeta) {
         validarCarpeta(carpeta);
         validarArchivo(archivo);
+
+        AppProperties.S3 s3Properties = appProperties.getAws().getS3();
 
         String extension = obtenerExtension(archivo.getOriginalFilename());
         String contentType = TIPOS_PERMITIDOS.get(extension.toLowerCase());
@@ -54,7 +51,7 @@ public class S3StorageService {
 
         try {
             PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(bucket)
+                    .bucket(s3Properties.getBucket())
                     .key(clave)
                     .contentType(contentType)
                     .contentLength(archivo.getSize())
@@ -62,7 +59,8 @@ public class S3StorageService {
 
             s3.putObject(request, RequestBody.fromBytes(archivo.getBytes()));
 
-            String url = "https://" + bucket + ".s3." + region + ".amazonaws.com/" + clave;
+            String url = "https://" + s3Properties.getBucket() + ".s3."
+                    + s3Properties.getRegion() + ".amazonaws.com/" + clave;
             log.info("Archivo subido a S3: {}", clave);
 
             return ArchivoSubidoResponse.builder()

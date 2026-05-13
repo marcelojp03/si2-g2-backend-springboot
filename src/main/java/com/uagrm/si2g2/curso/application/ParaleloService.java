@@ -2,6 +2,7 @@ package com.uagrm.si2g2.curso.application;
 
 import com.uagrm.si2g2.auditoria.application.AuditoriaService;
 import com.uagrm.si2g2.common.SecurityUtils;
+import com.uagrm.si2g2.institucion.application.ConfiguracionService;
 import com.uagrm.si2g2.curso.domain.Paralelo;
 import com.uagrm.si2g2.curso.domain.ParaleloRepository;
 import com.uagrm.si2g2.curso.dto.ParaleloRequest;
@@ -22,6 +23,7 @@ public class ParaleloService {
 
     private final ParaleloRepository repository;
     private final AuditoriaService auditoriaService;
+    private final ConfiguracionService configuracionService;
 
     @Transactional
     public ParaleloResponse crear(ParaleloRequest request) {
@@ -36,7 +38,7 @@ public class ParaleloService {
                 .idCurso(request.getIdCurso())
                 .idGestionAcademica(request.getIdGestionAcademica())
                 .nombre(request.getNombre())
-                .capacidad(request.getCapacidad())
+                .capacidad(resolveCapacity(idInstitucion, request.getCapacidad()))
                 .build();
         ParaleloResponse resp = ParaleloResponse.from(repository.save(p));
         auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
@@ -74,7 +76,7 @@ public class ParaleloService {
         p.setIdCurso(request.getIdCurso());
         p.setIdGestionAcademica(request.getIdGestionAcademica());
         p.setNombre(request.getNombre());
-        p.setCapacidad(request.getCapacidad());
+        p.setCapacidad(resolveCapacity(idInstitucion, request.getCapacidad()));
         ParaleloResponse resp = ParaleloResponse.from(repository.save(p));
         auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
                 "CURSO", "ACTUALIZAR_PARALELO", "paralelo", id.toString(),
@@ -95,5 +97,14 @@ public class ParaleloService {
     private Paralelo buscar(UUID id) {
         return repository.findByIdAndIdInstitucion(id, TenantContext.get())
                 .orElseThrow(() -> new EntityNotFoundException("Paralelo no encontrado: " + id));
+    }
+
+    private Integer resolveCapacity(UUID idInstitucion, Integer requestedCapacity) {
+        int configuredMax = configuracionService.getInt(idInstitucion, "MAX_ALUMNOS_AULA");
+        int capacity = requestedCapacity != null ? requestedCapacity : configuredMax;
+        if (capacity > configuredMax) {
+            throw new IllegalArgumentException("La capacidad no puede superar el máximo configurado para la institución: " + configuredMax);
+        }
+        return capacity;
     }
 }

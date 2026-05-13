@@ -26,6 +26,8 @@ public class RegisterRequest {
 
     private UUID idInstitucion;
 
+    private UUID idRol;
+
     /** Opcional. Si no se envía, se asigna ADMIN_INSTITUCION por defecto. */
     private String codigoRol;
 }

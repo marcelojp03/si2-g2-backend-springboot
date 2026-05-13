@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -23,8 +25,11 @@ public class Rol {
     @Column(name = "codigo", nullable = false, unique = true)
     private String codigo;
 
-    @Column(name = "nombre", nullable = false, unique = true)
+    @Column(name = "nombre", nullable = false)
     private String nombre;
+
+    @Column(name = "id_institucion")
+    private UUID idInstitucion;
 
     @Column(name = "descripcion")
     private String descripcion;
@@ -42,6 +47,15 @@ public class Rol {
 
     @Column(name = "actualizado_en", nullable = false)
     private Instant actualizadoEn;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "rol_permiso",
+            joinColumns = @JoinColumn(name = "id_rol"),
+            inverseJoinColumns = @JoinColumn(name = "id_permiso")
+    )
+    @Builder.Default
+    private Set<Permiso> permisos = new HashSet<>();
 
     @PrePersist
     protected void onCreate() {

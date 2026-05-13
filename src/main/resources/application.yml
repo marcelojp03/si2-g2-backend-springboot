@@ -55,3 +55,10 @@ app:
       bucket: ${S3_BUCKET:sia-archivos}
       region: ${AWS_REGION:us-east-1}
       presigned-url-expiration-minutes: ${S3_PRESIGNED_URL_EXPIRATION_MINUTES:60}
+  security:
+    account-recovery:
+      expiration-minutes: ${ACCOUNT_RECOVERY_EXPIRATION_MINUTES:15}
+      max-attempts: ${ACCOUNT_RECOVERY_MAX_ATTEMPTS:5}
+      expose-debug-data: ${ACCOUNT_RECOVERY_EXPOSE_DEBUG_DATA:false}
+    audit:
+      hash-secret: ${AUDIT_HASH_SECRET:local-audit-secret-change-me}

@@ -2,9 +2,9 @@ package com.uagrm.si2g2.usuario.application;
 
 import com.uagrm.si2g2.auditoria.application.AuditoriaService;
 import com.uagrm.si2g2.auth.domain.Rol;
-import com.uagrm.si2g2.auth.domain.RolRepository;
 import com.uagrm.si2g2.auth.domain.Usuario;
 import com.uagrm.si2g2.auth.domain.UsuarioRepository;
+import com.uagrm.si2g2.auth.application.RoleService;
 import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.tenant.TenantContext;
 import com.uagrm.si2g2.usuario.dto.ActualizarUsuarioRequest;
@@ -12,6 +12,7 @@ import com.uagrm.si2g2.usuario.dto.AsignarRolRequest;
 import com.uagrm.si2g2.usuario.dto.UsuarioResponse;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,13 +25,16 @@ import java.util.stream.Collectors;
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
-    private final RolRepository rolRepository;
+    private final RoleService roleService;
     private final AuditoriaService auditoriaService;
 
     @Transactional(readOnly = true)
     public List<UsuarioResponse> listar() {
         UUID idInstitucion = TenantContext.get();
         if (idInstitucion == null) {
+            if (!SecurityUtils.currentUserHasRole("SUPER_ADMIN")) {
+                throw new AccessDeniedException("Solo SUPER_ADMIN puede listar usuarios globalmente");
+            }
             return usuarioRepository.findAll().stream()
                     .map(UsuarioResponse::from).collect(Collectors.toList());
         }
@@ -71,14 +75,13 @@ public class UsuarioService {
     @Transactional
     public UsuarioResponse asignarRol(UUID id, AsignarRolRequest request) {
         Usuario usuario = buscarConAcceso(id);
-        Rol rol = rolRepository.findByCodigo(request.getCodigoRol())
-                .orElseThrow(() -> new EntityNotFoundException("Rol no encontrado: " + request.getCodigoRol()));
+        Rol rol = roleService.resolveAssignableRole(request.getIdRol(), request.getCodigoRol());
         usuario.getRoles().clear();
         usuario.getRoles().add(rol);
         UsuarioResponse resp = UsuarioResponse.from(usuarioRepository.save(usuario));
         auditoriaService.registrar(usuario.getIdInstitucion(), SecurityUtils.currentUserId(),
                 "USUARIO", "ASIGNAR_ROL", "usuario", id.toString(),
-                true, "Rol asignado: " + request.getCodigoRol());
+                true, "Rol asignado: " + rol.getCodigo());
         return resp;
     }
 
@@ -88,6 +91,11 @@ public class UsuarioService {
             return usuarioRepository.findByIdAndIdInstitucion(id, idInstitucion)
                     .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado: " + id));
         }
+
+        if (!SecurityUtils.currentUserHasRole("SUPER_ADMIN")) {
+            throw new AccessDeniedException("No tienes permisos para acceder a usuarios fuera de tu institución");
+        }
+
         return usuarioRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Usuario no encontrado: " + id));
     }

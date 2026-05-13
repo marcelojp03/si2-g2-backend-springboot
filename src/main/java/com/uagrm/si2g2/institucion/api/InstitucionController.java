@@ -3,6 +3,7 @@ package com.uagrm.si2g2.institucion.api;
 import com.uagrm.si2g2.common.dto.ApiResponse;
 import com.uagrm.si2g2.institucion.application.InstitucionService;
 import com.uagrm.si2g2.institucion.dto.ConfiguracionInstitucionRequest;
+import com.uagrm.si2g2.institucion.dto.ConfiguracionParametroResponse;
 import com.uagrm.si2g2.institucion.dto.ConfiguracionInstitucionResponse;
 import com.uagrm.si2g2.institucion.dto.InstitucionRequest;
 import com.uagrm.si2g2.institucion.dto.InstitucionResponse;
@@ -33,6 +34,39 @@ public class InstitucionController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<List<InstitucionResponse>>> listar() {
         return ResponseEntity.ok(ApiResponse.ok("Instituciones", service.listar()));
+    }
+
+    @GetMapping("/actual")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','DIRECTOR','SECRETARIO')")
+    public ResponseEntity<ApiResponse<InstitucionResponse>> obtenerActual() {
+        return ResponseEntity.ok(ApiResponse.ok("Institución actual", service.obtenerActual()));
+    }
+
+    @GetMapping("/actual/configuraciones")
+    @PreAuthorize("hasAuthority('CONFIGURACION_READ') or hasAuthority('CONFIGURACION_WRITE')")
+    public ResponseEntity<ApiResponse<List<ConfiguracionInstitucionResponse>>> listarConfiguracionesActuales() {
+        return ResponseEntity.ok(ApiResponse.ok("Configuraciones", service.listarConfiguracionesActuales()));
+    }
+
+    @GetMapping("/actual/configuraciones/catalogo")
+    @PreAuthorize("hasAuthority('CONFIGURACION_READ') or hasAuthority('CONFIGURACION_WRITE')")
+    public ResponseEntity<ApiResponse<List<ConfiguracionParametroResponse>>> listarCatalogoConfiguracionesActuales() {
+        return ResponseEntity.ok(ApiResponse.ok("Catálogo de configuraciones", service.listarCatalogoConfiguracionesActuales()));
+    }
+
+    @PutMapping("/actual/configuraciones")
+    @PreAuthorize("hasAuthority('CONFIGURACION_WRITE')")
+    public ResponseEntity<ApiResponse<ConfiguracionInstitucionResponse>> guardarConfiguracionActual(
+            @Valid @RequestBody ConfiguracionInstitucionRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok("Configuración guardada",
+                service.guardarConfiguracionActual(request)));
+    }
+
+    @DeleteMapping("/actual/configuraciones/{clave}")
+    @PreAuthorize("hasAuthority('CONFIGURACION_WRITE')")
+    public ResponseEntity<ApiResponse<Void>> eliminarConfiguracionActual(@PathVariable String clave) {
+        service.eliminarConfiguracionActual(clave);
+        return ResponseEntity.ok(ApiResponse.ok("Configuración eliminada", null));
     }
 
     @GetMapping("/{id}")

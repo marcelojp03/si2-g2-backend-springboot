@@ -1,5 +1,6 @@
 package com.uagrm.si2g2.storage;
 
+import com.uagrm.si2g2.config.AppProperties;
 import com.uagrm.si2g2.storage.domain.Archivo;
 import com.uagrm.si2g2.storage.domain.ArchivoReferencia;
 import com.uagrm.si2g2.storage.domain.ArchivoReferenciaRepository;
@@ -8,7 +9,6 @@ import com.uagrm.si2g2.storage.dto.ArchivoResponse;
 import com.uagrm.si2g2.storage.dto.ArchivoUploadRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -47,19 +47,11 @@ public class ArchivoService {
 
     private static final Set<String> EXTENSIONES_IMAGEN = Set.of("jpg", "jpeg", "png", "webp", "gif");
 
-    @Value("${app.aws.s3.bucket}")
-    private String bucket;
-
-    @Value("${app.aws.s3.region}")
-    private String region;
-
-    @Value("${app.aws.s3.presigned-url-expiration-minutes:60}")
-    private int presignedUrlExpirationMinutes;
-
     private final S3Client s3;
     private final S3Presigner s3Presigner;
     private final ArchivoRepository archivoRepository;
     private final ArchivoReferenciaRepository archivoReferenciaRepository;
+    private final AppProperties appProperties;
 
     /**
      * Sube un archivo a S3, lo registra en BD y crea la referencia con la entidad indicada.
@@ -68,6 +60,8 @@ public class ArchivoService {
     public ArchivoResponse subirYRegistrar(MultipartFile file, UUID idInstitucion,
                                            UUID idUsuario, ArchivoUploadRequest req) {
         validarArchivo(file);
+
+        AppProperties.S3 s3Properties = appProperties.getAws().getS3();
 
         String ext = obtenerExtension(file.getOriginalFilename());
         String contentType = TIPOS_PERMITIDOS.get(ext.toLowerCase());
@@ -87,8 +81,8 @@ public class ArchivoService {
                 .extension(ext)
                 .mimeType(contentType)
                 .tamanoBytes(file.getSize())
-                .bucketS3(bucket)
-                .regionS3(region)
+                .bucketS3(s3Properties.getBucket())
+                .regionS3(s3Properties.getRegion())
                 .keyS3(key)
                 .etag(etag)
                 .categoria(categoria)
@@ -133,7 +127,7 @@ public class ArchivoService {
                 .findByIdInstitucionAndModuloAndEntidadAndIdEntidadAndEstado(
                         idInstitucion, modulo, entidad, idEntidad, "ACTIVO")
                 .stream()
-                .map(ref -> archivoRepository.findById(ref.getIdArchivo())
+                .map(ref -> archivoRepository.findByIdAndIdInstitucion(ref.getIdArchivo(), idInstitucion)
                         .filter(a -> "ACTIVO".equals(a.getEstado()))
                         .map(a -> toResponse(a, ref))
                         .orElse(null))
@@ -151,7 +145,7 @@ public class ArchivoService {
         return archivoReferenciaRepository
                 .findByIdInstitucionAndModuloAndEntidadAndIdEntidadAndTipoReferenciaAndEsPrincipalTrueAndEstado(
                         idInstitucion, modulo, entidad, idEntidad, tipoReferencia, "ACTIVO")
-                .flatMap(ref -> archivoRepository.findById(ref.getIdArchivo())
+                .flatMap(ref -> archivoRepository.findByIdAndIdInstitucion(ref.getIdArchivo(), idInstitucion)
                         .filter(a -> "ACTIVO".equals(a.getEstado()))
                         .map(a -> toResponse(a, ref)));
     }
@@ -161,11 +155,8 @@ public class ArchivoService {
      */
     @Transactional
     public void eliminar(UUID idArchivo, UUID idInstitucion) {
-        Archivo archivo = archivoRepository.findById(idArchivo)
+        Archivo archivo = archivoRepository.findByIdAndIdInstitucion(idArchivo, idInstitucion)
                 .orElseThrow(() -> new IllegalArgumentException("Archivo no encontrado"));
-        if (!archivo.getIdInstitucion().equals(idInstitucion)) {
-            throw new IllegalArgumentException("No tiene permiso para eliminar este archivo");
-        }
         archivo.setEstado("ELIMINADO");
         archivoRepository.save(archivo);
         log.info("Archivo eliminado lógicamente: id={}", idArchivo);
@@ -176,7 +167,7 @@ public class ArchivoService {
     private String subirS3(MultipartFile file, String key, String contentType) {
         try {
             PutObjectRequest req = PutObjectRequest.builder()
-                    .bucket(bucket)
+                    .bucket(appProperties.getAws().getS3().getBucket())
                     .key(key)
                     .contentType(contentType)
                     .contentLength(file.getSize())
@@ -203,11 +194,11 @@ public class ArchivoService {
     private String generarUrlFirmada(String key) {
         try {
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                    .bucket(bucket)
+                    .bucket(appProperties.getAws().getS3().getBucket())
                     .key(key)
                     .build();
             GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                    .signatureDuration(Duration.ofMinutes(presignedUrlExpirationMinutes))
+                    .signatureDuration(Duration.ofMinutes(appProperties.getAws().getS3().getPresignedUrlExpirationMinutes()))
                     .getObjectRequest(getObjectRequest)
                     .build();
             PresignedGetObjectRequest presigned = s3Presigner.presignGetObject(presignRequest);

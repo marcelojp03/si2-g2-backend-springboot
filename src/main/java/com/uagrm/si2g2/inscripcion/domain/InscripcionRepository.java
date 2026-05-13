@@ -20,4 +20,6 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, UUID> 
 
     boolean existsByIdInstitucionAndIdEstudianteAndIdGestionAndEstado(
             UUID idInstitucion, UUID idEstudiante, UUID idGestion, String estado);
+
+    long countByIdInstitucionAndIdParaleloAndEstado(UUID idInstitucion, UUID idParalelo, String estado);
 }

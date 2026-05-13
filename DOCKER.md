@@ -29,7 +29,7 @@ docker build -t si2-g2-backend .
 ## Ejecutar contenedor
 
 ```bash
-docker run --rm --env-file .env -p 2026:2026 si2-g2-backend
+docker run --rm --name si2-g2-backend --env-file .env -p 2026:2026 si2-g2-backend
 ```
 
 La API quedara disponible en:
@@ -42,4 +42,18 @@ El endpoint de salud queda disponible en:
 
 ```text
 http://localhost:2026/actuator/health
+```
+
+## Ver logs
+
+Si ejecutaste el contenedor con `docker run`:
+
+```bash
+docker logs -f si2-g2-backend
+```
+
+Si levantaste el proyecto desde la raiz con Docker Compose:
+
+```bash
+docker compose logs -f backend
 ```

@@ -3,15 +3,17 @@ package com.uagrm.si2g2.institucion.application;
 import com.uagrm.si2g2.auditoria.application.AuditoriaService;
 import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.institucion.domain.ConfiguracionInstitucion;
-import com.uagrm.si2g2.institucion.domain.ConfiguracionInstitucionRepository;
 import com.uagrm.si2g2.institucion.domain.Institucion;
 import com.uagrm.si2g2.institucion.domain.InstitucionRepository;
 import com.uagrm.si2g2.institucion.dto.ConfiguracionInstitucionRequest;
+import com.uagrm.si2g2.institucion.dto.ConfiguracionParametroResponse;
 import com.uagrm.si2g2.institucion.dto.ConfiguracionInstitucionResponse;
 import com.uagrm.si2g2.institucion.dto.InstitucionRequest;
 import com.uagrm.si2g2.institucion.dto.InstitucionResponse;
+import com.uagrm.si2g2.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +26,8 @@ import java.util.stream.Collectors;
 public class InstitucionService {
 
     private final InstitucionRepository institucionRepository;
-    private final ConfiguracionInstitucionRepository configuracionRepository;
     private final AuditoriaService auditoriaService;
+    private final ConfiguracionService configuracionService;
 
     @Transactional
     public InstitucionResponse crear(InstitucionRequest request) {
@@ -56,15 +58,22 @@ public class InstitucionService {
 
     @Transactional(readOnly = true)
     public InstitucionResponse obtener(UUID id) {
-        return institucionRepository.findById(id)
+        UUID accessibleInstitutionId = resolveAccessibleInstitutionId(id);
+        return institucionRepository.findById(accessibleInstitutionId)
                 .map(InstitucionResponse::from)
-                .orElseThrow(() -> new EntityNotFoundException("Institución no encontrada: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Institución no encontrada: " + accessibleInstitutionId));
+    }
+
+    @Transactional(readOnly = true)
+    public InstitucionResponse obtenerActual() {
+        return obtener(requireInstitutionTenant());
     }
 
     @Transactional
     public InstitucionResponse actualizar(UUID id, InstitucionRequest request) {
-        Institucion inst = institucionRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Institución no encontrada: " + id));
+        UUID accessibleInstitutionId = resolveAccessibleInstitutionId(id);
+        Institucion inst = institucionRepository.findById(accessibleInstitutionId)
+                .orElseThrow(() -> new EntityNotFoundException("Institución no encontrada: " + accessibleInstitutionId));
 
         if (!inst.getCodigo().equals(request.getCodigo())
                 && institucionRepository.existsByCodigo(request.getCodigo())) {
@@ -78,8 +87,8 @@ public class InstitucionService {
         inst.setCorreo(request.getCorreo());
         inst.setDireccion(request.getDireccion());
         InstitucionResponse resp = InstitucionResponse.from(institucionRepository.save(inst));
-        auditoriaService.registrar(id, SecurityUtils.currentUserId(),
-                "INSTITUCION", "ACTUALIZAR", "institucion", id.toString(),
+        auditoriaService.registrar(accessibleInstitutionId, SecurityUtils.currentUserId(),
+                "INSTITUCION", "ACTUALIZAR", "institucion", accessibleInstitutionId.toString(),
                 true, "Institución actualizada: " + resp.getCodigo());
         return resp;
     }
@@ -88,44 +97,66 @@ public class InstitucionService {
 
     @Transactional(readOnly = true)
     public List<ConfiguracionInstitucionResponse> listarConfiguraciones(UUID idInstitucion) {
-        if (!institucionRepository.existsById(idInstitucion)) {
-            throw new EntityNotFoundException("Institución no encontrada: " + idInstitucion);
-        }
-        return configuracionRepository.findAllByIdInstitucion(idInstitucion).stream()
-                .map(ConfiguracionInstitucionResponse::from)
+        UUID accessibleInstitutionId = resolveAccessibleInstitutionId(idInstitucion);
+        return configuracionService.listarSoportadas(accessibleInstitutionId).stream()
+                .map(item -> ConfiguracionInstitucionResponse.builder()
+                        .id(null)
+                        .idInstitucion(accessibleInstitutionId)
+                        .clave(item.getClave())
+                        .valor(item.getValor())
+                        .tipoValor(item.getTipoValor())
+                        .descripcion(item.getDescripcion())
+                        .build())
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConfiguracionInstitucionResponse> listarConfiguracionesActuales() {
+        return listarConfiguraciones(requireInstitutionTenant());
     }
 
     @Transactional
     public ConfiguracionInstitucionResponse guardarConfiguracion(UUID idInstitucion,
                                                                   ConfiguracionInstitucionRequest request) {
-        if (!institucionRepository.existsById(idInstitucion)) {
-            throw new EntityNotFoundException("Institución no encontrada: " + idInstitucion);
-        }
+        UUID accessibleInstitutionId = resolveAccessibleInstitutionId(idInstitucion);
+        return configuracionService.guardar(accessibleInstitutionId, request);
+    }
 
-        ConfiguracionInstitucion config = configuracionRepository
-                .findByIdInstitucionAndClave(idInstitucion, request.getClave())
-                .orElse(ConfiguracionInstitucion.builder()
-                        .idInstitucion(idInstitucion)
-                        .clave(request.getClave())
-                        .build());
-
-        config.setValor(request.getValor());
-        config.setTipoValor(request.getTipoValor() != null ? request.getTipoValor() : "TEXTO");
-        config.setDescripcion(request.getDescripcion());
-
-        return ConfiguracionInstitucionResponse.from(configuracionRepository.save(config));
+    @Transactional
+    public ConfiguracionInstitucionResponse guardarConfiguracionActual(ConfiguracionInstitucionRequest request) {
+        return guardarConfiguracion(requireInstitutionTenant(), request);
     }
 
     @Transactional
     public void eliminarConfiguracion(UUID idInstitucion, String clave) {
-        if (!institucionRepository.existsById(idInstitucion)) {
-            throw new EntityNotFoundException("Institución no encontrada: " + idInstitucion);
+        UUID accessibleInstitutionId = resolveAccessibleInstitutionId(idInstitucion);
+        configuracionService.resetToDefault(accessibleInstitutionId, clave);
+    }
+
+    @Transactional
+    public void eliminarConfiguracionActual(String clave) {
+        eliminarConfiguracion(requireInstitutionTenant(), clave);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConfiguracionParametroResponse> listarCatalogoConfiguracionesActuales() {
+        return configuracionService.listarSoportadas(requireInstitutionTenant());
+    }
+
+    private UUID resolveAccessibleInstitutionId(UUID requestedInstitutionId) {
+        if (SecurityUtils.currentUserHasRole("SUPER_ADMIN")) {
+            return requestedInstitutionId;
         }
-        ConfiguracionInstitucion config = configuracionRepository
-                .findByIdInstitucionAndClave(idInstitucion, clave)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Configuración '" + clave + "' no encontrada para la institución"));
-        configuracionRepository.delete(config);
+
+        UUID tenantInstitutionId = requireInstitutionTenant();
+        if (!tenantInstitutionId.equals(requestedInstitutionId)) {
+            throw new AccessDeniedException("No tienes acceso a otra institución");
+        }
+        return tenantInstitutionId;
+    }
+
+    private UUID requireInstitutionTenant() {
+        UUID tenantInstitutionId = TenantContext.get();
+        return tenantInstitutionId != null ? tenantInstitutionId : SecurityUtils.requireCurrentInstitutionId();
     }
 }

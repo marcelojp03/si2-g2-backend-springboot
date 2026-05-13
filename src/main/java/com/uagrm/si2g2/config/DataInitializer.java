@@ -6,7 +6,6 @@ import com.uagrm.si2g2.auth.domain.Usuario;
 import com.uagrm.si2g2.auth.domain.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,23 +22,14 @@ public class DataInitializer implements ApplicationRunner {
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
-
-    @Value("${app.super-admin.correo}")
-    private String superAdminCorreo;
-
-    @Value("${app.super-admin.contrasena}")
-    private String superAdminContrasena;
-
-    @Value("${app.super-admin.nombres:Super}")
-    private String superAdminNombres;
-
-    @Value("${app.super-admin.apellidos:Admin}")
-    private String superAdminApellidos;
+    private final AppProperties appProperties;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (usuarioRepository.findByCorreo(superAdminCorreo).isPresent()) {
+        AppProperties.SuperAdmin superAdminProperties = appProperties.getSuperAdmin();
+
+        if (usuarioRepository.findByCorreo(superAdminProperties.getCorreo()).isPresent()) {
             log.info("SUPER_ADMIN ya existe, omitiendo inicialización.");
             return;
         }
@@ -50,14 +40,14 @@ public class DataInitializer implements ApplicationRunner {
 
         Usuario superAdmin = Usuario.builder()
                 .idInstitucion(null)
-                .correo(superAdminCorreo)
-                .hashContrasena(passwordEncoder.encode(superAdminContrasena))
-                .nombres(superAdminNombres)
-                .apellidos(superAdminApellidos)
+                .correo(superAdminProperties.getCorreo())
+                .hashContrasena(passwordEncoder.encode(superAdminProperties.getContrasena()))
+                .nombres(superAdminProperties.getNombres())
+                .apellidos(superAdminProperties.getApellidos())
                 .roles(Set.of(rol))
                 .build();
 
         usuarioRepository.save(superAdmin);
-        log.info("SUPER_ADMIN creado con correo: {}", superAdminCorreo);
+        log.info("SUPER_ADMIN creado con correo: {}", superAdminProperties.getCorreo());
     }
 }

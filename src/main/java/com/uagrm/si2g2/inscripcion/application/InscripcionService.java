@@ -4,6 +4,7 @@ import com.uagrm.si2g2.auditoria.application.AuditoriaService;
 import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.curso.domain.Paralelo;
 import com.uagrm.si2g2.curso.domain.ParaleloRepository;
+import com.uagrm.si2g2.institucion.application.ConfiguracionService;
 import com.uagrm.si2g2.inscripcion.domain.Inscripcion;
 import com.uagrm.si2g2.inscripcion.domain.InscripcionRepository;
 import com.uagrm.si2g2.inscripcion.dto.InscripcionRequest;
@@ -27,10 +28,14 @@ public class InscripcionService {
     private final InscripcionRepository repository;
     private final ParaleloRepository paraleloRepository;
     private final AuditoriaService auditoriaService;
+    private final ConfiguracionService configuracionService;
 
     @Transactional
     public InscripcionResponse inscribir(InscripcionRequest request) {
         UUID idInstitucion = TenantContext.get();
+        if (!configuracionService.getBoolean(idInstitucion, "MATRICULA_HABILITADA")) {
+            throw new IllegalStateException("La matrícula está deshabilitada para esta institución");
+        }
         if (repository.existsByIdInstitucionAndIdEstudianteAndIdGestionAndEstado(
                 idInstitucion, request.getIdEstudiante(), request.getIdGestion(), "ACTIVA")) {
             throw new IllegalStateException(
@@ -38,6 +43,11 @@ public class InscripcionService {
         }
         Paralelo paralelo = paraleloRepository.findByIdAndIdInstitucion(request.getIdParalelo(), idInstitucion)
                 .orElseThrow(() -> new EntityNotFoundException("Paralelo no encontrado: " + request.getIdParalelo()));
+        long activeEnrollments = repository.countByIdInstitucionAndIdParaleloAndEstado(idInstitucion, paralelo.getId(), "ACTIVA");
+        Integer capacity = paralelo.getCapacidad();
+        if (capacity != null && activeEnrollments >= capacity) {
+            throw new IllegalStateException("El paralelo alcanzó su capacidad máxima configurada");
+        }
 
         LocalDate fecha = request.getFechaInscripcion() != null
                 ? request.getFechaInscripcion()
