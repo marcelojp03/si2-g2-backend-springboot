@@ -4,6 +4,8 @@ import com.uagrm.si2g2.academico.domain.GestionAcademica;
 import com.uagrm.si2g2.academico.domain.GestionAcademicaRepository;
 import com.uagrm.si2g2.asignacion.domain.AsignacionDocente;
 import com.uagrm.si2g2.asignacion.domain.AsignacionDocenteRepository;
+import com.uagrm.si2g2.aula.domain.Aula;
+import com.uagrm.si2g2.aula.domain.AulaRepository;
 import com.uagrm.si2g2.auth.domain.Rol;
 import com.uagrm.si2g2.auth.domain.RolRepository;
 import com.uagrm.si2g2.auth.domain.Usuario;
@@ -18,6 +20,9 @@ import com.uagrm.si2g2.estudiante.domain.Estudiante;
 import com.uagrm.si2g2.estudiante.domain.EstudianteRepository;
 import com.uagrm.si2g2.inscripcion.domain.Inscripcion;
 import com.uagrm.si2g2.inscripcion.domain.InscripcionRepository;
+import com.uagrm.si2g2.institucion.application.ConfiguracionCatalog;
+import com.uagrm.si2g2.institucion.domain.ConfiguracionInstitucion;
+import com.uagrm.si2g2.institucion.domain.ConfiguracionInstitucionRepository;
 import com.uagrm.si2g2.institucion.domain.Institucion;
 import com.uagrm.si2g2.institucion.domain.InstitucionRepository;
 import com.uagrm.si2g2.materia.domain.Materia;
@@ -30,6 +35,7 @@ import com.uagrm.si2g2.tutor.domain.Tutor;
 import com.uagrm.si2g2.tutor.domain.TutorRepository;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -44,19 +50,83 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SyntheticDataSeeder {
 
     private static final String PASSWORD = "Demo12345!";
-    private static final String INSTITUCION_CODIGO = "SEED-001";
-    private static final String GESTION_NOMBRE = "Gestion Academica Demo 2026";
+    private static final String GESTION_NOMBRE = "Gestion Academica 2026";
+
+    private static final SchoolSpec[] SCHOOLS = {
+            new SchoolSpec("UEM-001", "Unidad Educativa Modelo", "PRIVADO",
+                    "Santa Cruz", "Av. Banzer entre 3er y 4to anillo", "modelo.edu.bo",
+                    List.of("A", "B"), 10, 32),
+            new SchoolSpec("UEC-002", "Unidad Educativa Cristo Rey de Convenio", "CONVENIO",
+                    "Cochabamba", "Zona Cala Cala, calle Libertad 245", "cristorey.edu.bo",
+                    List.of("A"), 8, 30)
+    };
+
+    private static final CourseSpec[] COURSES = {
+            new CourseSpec("PRI-1", "1ro Primaria", "Primaria", 1, 6),
+            new CourseSpec("PRI-2", "2do Primaria", "Primaria", 2, 7),
+            new CourseSpec("PRI-3", "3ro Primaria", "Primaria", 3, 8),
+            new CourseSpec("PRI-4", "4to Primaria", "Primaria", 4, 9),
+            new CourseSpec("PRI-5", "5to Primaria", "Primaria", 5, 10),
+            new CourseSpec("PRI-6", "6to Primaria", "Primaria", 6, 11),
+            new CourseSpec("SEC-1", "1ro Secundaria", "Secundaria", 7, 12),
+            new CourseSpec("SEC-2", "2do Secundaria", "Secundaria", 8, 13),
+            new CourseSpec("SEC-3", "3ro Secundaria", "Secundaria", 9, 14),
+            new CourseSpec("SEC-4", "4to Secundaria", "Secundaria", 10, 15),
+            new CourseSpec("SEC-5", "5to Secundaria", "Secundaria", 11, 16),
+            new CourseSpec("SEC-6", "6to Secundaria", "Secundaria", 12, 17)
+    };
+
+    private static final SubjectSpec[] SUBJECTS = {
+            new SubjectSpec("MAT", "Matematica", "Ciencias Exactas", 6),
+            new SubjectSpec("LEN", "Comunicacion y Lenguajes", "Lenguajes", 5),
+            new SubjectSpec("CN", "Ciencias Naturales", "Ciencias", 4),
+            new SubjectSpec("CS", "Ciencias Sociales", "Sociedad", 4),
+            new SubjectSpec("VER", "Valores, Espiritualidad y Religiones", "Cosmovisiones", 2),
+            new SubjectSpec("APV", "Artes Plasticas y Visuales", "Arte", 2),
+            new SubjectSpec("EFD", "Educacion Fisica y Deportes", "Salud", 2),
+            new SubjectSpec("MUS", "Educacion Musical", "Arte", 2),
+            new SubjectSpec("ING", "Lengua Extranjera Ingles", "Lenguajes", 3),
+            new SubjectSpec("TT", "Tecnica Tecnologica General", "Tecnologia", 3),
+            new SubjectSpec("BIO", "Biologia", "Ciencias", 4),
+            new SubjectSpec("FIS", "Fisica", "Ciencias", 4),
+            new SubjectSpec("QUI", "Quimica", "Ciencias", 4),
+            new SubjectSpec("FIL", "Filosofia y Psicologia", "Humanidades", 3)
+    };
+
+    private static final String[] NOMBRES_F = {
+            "Sofia", "Camila", "Valeria", "Lucia", "Mariana", "Gabriela", "Daniela", "Fernanda",
+            "Antonella", "Carla", "Elena", "Paola", "Natalia", "Andrea", "Victoria", "Micaela"
+    };
+
+    private static final String[] NOMBRES_M = {
+            "Mateo", "Santiago", "Diego", "Sebastian", "Adrian", "Nicolas", "Lucas", "Emiliano",
+            "Samuel", "Joaquin", "Bruno", "Rodrigo", "Andres", "Tomas", "Mauricio", "Javier"
+    };
+
+    private static final String[] APELLIDOS = {
+            "Vargas", "Mamani", "Rojas", "Quispe", "Flores", "Gutierrez", "Rivera", "Lopez",
+            "Choque", "Mendoza", "Aguilar", "Paz", "Suarez", "Arce", "Cabrera", "Medina",
+            "Salazar", "Ortiz", "Romero", "Camacho"
+    };
+
+    private static final String[] DOCENTES = {
+            "Ana Rojas", "Carlos Mendez", "Patricia Vargas", "Luis Arce", "Ruth Aguilar", "Mario Suarez",
+            "Claudia Medina", "Fernando Paz", "Marcela Lopez", "Hugo Salazar", "Elena Camacho", "Jorge Rivera",
+            "Marisol Gutierrez", "Oscar Romero"
+    };
 
     private final InstitucionRepository institucionRepository;
     private final GestionAcademicaRepository gestionAcademicaRepository;
     private final CursoRepository cursoRepository;
     private final ParaleloRepository paraleloRepository;
     private final MateriaRepository materiaRepository;
+    private final AulaRepository aulaRepository;
     private final DocenteRepository docenteRepository;
     private final EstudianteRepository estudianteRepository;
     private final TutorRepository tutorRepository;
@@ -68,111 +138,201 @@ public class SyntheticDataSeeder {
     private final PasswordEncoder passwordEncoder;
     private final JdbcTemplate jdbcTemplate;
     private final EntityManager entityManager;
+    private final ConfiguracionInstitucionRepository configuracionInstitucionRepository;
 
     @Transactional
     public SeedResult seed() {
         SeedStats stats = new SeedStats();
         List<SeedUser> usuarios = new ArrayList<>();
-
         Roles roles = loadRoles();
-        Institucion institucion = mark(stats, "instituciones", findOrCreateInstitucion());
-        UUID idInstitucion = institucion.getId();
 
+        for (SchoolSpec school : SCHOOLS) {
+            seedSchool(school, roles, stats, usuarios);
+        }
+
+        log.info("Seed sintetico verificado. Creados={}, existentes={}", stats.creados(), stats.existentes());
+        return new SeedResult("MULTI-COLEGIO", GESTION_NOMBRE, stats.creados(), stats.existentes(), usuarios);
+    }
+
+    private void seedSchool(SchoolSpec school, Roles roles, SeedStats stats, List<SeedUser> usuarios) {
+        Institucion institucion = mark(stats, "instituciones", findOrCreateInstitucion(school));
+        UUID idInstitucion = institucion.getId();
+        seedConfiguraciones(school, idInstitucion, stats);
         GestionAcademica gestion = mark(stats, "gestiones", findOrCreateGestion(idInstitucion));
 
         Usuario admin = mark(stats, "usuarios", findOrCreateUsuario(
-                "admin.demo@si2.test", "Admin", "Institucion Demo", idInstitucion, roles.adminInstitucion()));
-        usuarios.add(user("admin.demo@si2.test", "ADMIN_INSTITUCION", "Admin Institucion Demo", "Acceso administrativo de institucion"));
-
+                "admin@" + school.domain(), "Admin", shortName(school.name()), idInstitucion, roles.adminInstitucion()));
         Usuario director = mark(stats, "usuarios", findOrCreateUsuario(
-                "director.demo@si2.test", "Daniel", "Quiroga", idInstitucion, roles.director()));
-        usuarios.add(user("director.demo@si2.test", "DIRECTOR", "Daniel Quiroga", "Director academico"));
-
+                "director@" + school.domain(), "Daniel", "Quiroga", idInstitucion, roles.director()));
         Usuario secretario = mark(stats, "usuarios", findOrCreateUsuario(
-                "secretaria.demo@si2.test", "Mariela", "Ribera", idInstitucion, roles.secretario()));
-        usuarios.add(user("secretaria.demo@si2.test", "SECRETARIO", "Mariela Ribera", "Secretaria academica"));
+                "secretaria@" + school.domain(), "Mariela", "Ribera", idInstitucion, roles.secretario()));
 
-        Usuario docenteMate = mark(stats, "usuarios", findOrCreateUsuario(
-                "docente.mate.demo@si2.test", "Ana", "Rojas", idInstitucion, roles.docente()));
-        Usuario docenteLeng = mark(stats, "usuarios", findOrCreateUsuario(
-                "docente.lenguaje.demo@si2.test", "Carlos", "Mendez", idInstitucion, roles.docente()));
-        usuarios.add(user("docente.mate.demo@si2.test", "DOCENTE", "Ana Rojas", "Docente de Matematica"));
-        usuarios.add(user("docente.lenguaje.demo@si2.test", "DOCENTE", "Carlos Mendez", "Docente de Lenguaje"));
+        usuarios.add(user(admin.getCorreo(), "ADMIN_INSTITUCION", admin.getNombres() + " " + admin.getApellidos(), school.name()));
+        usuarios.add(user(director.getCorreo(), "DIRECTOR", director.getNombres() + " " + director.getApellidos(), school.name()));
+        usuarios.add(user(secretario.getCorreo(), "SECRETARIO", secretario.getNombres() + " " + secretario.getApellidos(), school.name()));
 
-        Usuario estudianteLucia = mark(stats, "usuarios", findOrCreateUsuario(
-                "estudiante.lucia.demo@si2.test", "Lucia", "Vargas", idInstitucion, roles.estudiante()));
-        Usuario estudianteMateo = mark(stats, "usuarios", findOrCreateUsuario(
-                "estudiante.mateo.demo@si2.test", "Mateo", "Flores", idInstitucion, roles.estudiante()));
-        Usuario estudianteSofia = mark(stats, "usuarios", findOrCreateUsuario(
-                "estudiante.sofia.demo@si2.test", "Sofia", "Rojas", idInstitucion, roles.estudiante()));
-        usuarios.add(user("estudiante.lucia.demo@si2.test", "ESTUDIANTE", "Lucia Vargas", "Estudiante de 1ro Primaria A"));
-        usuarios.add(user("estudiante.mateo.demo@si2.test", "ESTUDIANTE", "Mateo Flores", "Estudiante de 1ro Primaria A"));
-        usuarios.add(user("estudiante.sofia.demo@si2.test", "ESTUDIANTE", "Sofia Rojas", "Estudiante de 2do Primaria A"));
+        List<Curso> cursos = seedCursos(idInstitucion, stats);
+        Map<String, Materia> materias = seedMaterias(idInstitucion, stats);
+        List<Docente> docentes = seedDocentes(school, idInstitucion, roles.docente(), stats, usuarios);
+        seedAulas(school, idInstitucion, stats);
 
-        Usuario tutorMaria = mark(stats, "usuarios", findOrCreateUsuario(
-                "tutor.maria.demo@si2.test", "Maria", "Lopez", idInstitucion, roles.tutor()));
-        Usuario tutorJorge = mark(stats, "usuarios", findOrCreateUsuario(
-                "tutor.jorge.demo@si2.test", "Jorge", "Flores", idInstitucion, roles.tutor()));
-        usuarios.add(user("tutor.maria.demo@si2.test", "TUTOR", "Maria Lopez", "Tutora de Lucia y Sofia"));
-        usuarios.add(user("tutor.jorge.demo@si2.test", "TUTOR", "Jorge Flores", "Tutor de Mateo"));
+        int parallelIndex = 0;
+        int studentIndex = 1;
+        for (Curso curso : cursos) {
+            for (String paraleloNombre : school.parallels()) {
+                parallelIndex++;
+                Paralelo paralelo = mark(stats, "paralelos", findOrCreateParalelo(
+                        idInstitucion, curso.getId(), gestion.getId(), paraleloNombre, school.parallelCapacity()));
+                seedCursoMaterias(idInstitucion, curso, gestion, materias, stats);
+                seedAsignaciones(idInstitucion, curso, paralelo, gestion, materias, docentes, stats);
+                studentIndex = seedStudentsForParallel(school, idInstitucion, curso, paralelo, gestion, roles, stats, usuarios, studentIndex, parallelIndex);
+            }
+        }
+    }
 
-        Curso primeroPrimaria = mark(stats, "cursos", findOrCreateCurso(idInstitucion, "PRI-1", "1ro Primaria", "Primaria", 1));
-        Curso segundoPrimaria = mark(stats, "cursos", findOrCreateCurso(idInstitucion, "PRI-2", "2do Primaria", "Primaria", 2));
-        Curso primeroSecundaria = mark(stats, "cursos", findOrCreateCurso(idInstitucion, "SEC-1", "1ro Secundaria", "Secundaria", 7));
+    private List<Curso> seedCursos(UUID idInstitucion, SeedStats stats) {
+        List<Curso> cursos = new ArrayList<>();
+        for (CourseSpec spec : COURSES) {
+            cursos.add(mark(stats, "cursos", findOrCreateCurso(idInstitucion, spec)));
+        }
+        return cursos;
+    }
 
-        Paralelo primeroA = mark(stats, "paralelos", findOrCreateParalelo(idInstitucion, primeroPrimaria.getId(), gestion.getId(), "A", 30));
-        Paralelo segundoA = mark(stats, "paralelos", findOrCreateParalelo(idInstitucion, segundoPrimaria.getId(), gestion.getId(), "A", 30));
-        Paralelo secundariaA = mark(stats, "paralelos", findOrCreateParalelo(idInstitucion, primeroSecundaria.getId(), gestion.getId(), "A", 35));
+    private Map<String, Materia> seedMaterias(UUID idInstitucion, SeedStats stats) {
+        Map<String, Materia> materias = new LinkedHashMap<>();
+        for (SubjectSpec spec : SUBJECTS) {
+            materias.put(spec.code(), mark(stats, "materias", findOrCreateMateria(idInstitucion, spec)));
+        }
+        return materias;
+    }
 
-        Materia matematica = mark(stats, "materias", findOrCreateMateria(idInstitucion, "MAT-DEMO", "Matematica", "Ciencias Exactas", 6));
-        Materia lenguaje = mark(stats, "materias", findOrCreateMateria(idInstitucion, "LEN-DEMO", "Lenguaje", "Comunicacion", 5));
-        Materia ciencias = mark(stats, "materias", findOrCreateMateria(idInstitucion, "CN-DEMO", "Ciencias Naturales", "Ciencias", 4));
+    private List<Docente> seedDocentes(SchoolSpec school, UUID idInstitucion, Rol docenteRol, SeedStats stats, List<SeedUser> usuarios) {
+        List<Docente> docentes = new ArrayList<>();
+        for (int i = 0; i < DOCENTES.length; i++) {
+            String[] parts = DOCENTES[i].split(" ", 2);
+            String correo = "docente." + (i + 1) + "@" + school.domain();
+            Usuario usuario = mark(stats, "usuarios", findOrCreateUsuario(correo, parts[0], parts[1], idInstitucion, docenteRol));
+            usuarios.add(user(correo, "DOCENTE", DOCENTES[i], school.name()));
+            docentes.add(mark(stats, "docentes", findOrCreateDocente(
+                    idInstitucion,
+                    usuario.getId(),
+                    school.code() + "-DOC-" + pad(i + 1, 3),
+                    docNumber(school, 20_000 + i),
+                    parts[0],
+                    parts[1],
+                    "7" + pad(600_000 + i, 7),
+                    correo,
+                    SUBJECTS[i % SUBJECTS.length].name()
+            )));
+        }
+        return docentes;
+    }
 
-        mark(stats, "curso_materias", findOrCreateCursoMateria(idInstitucion, primeroPrimaria.getId(), matematica.getId(), gestion.getId(), 6));
-        mark(stats, "curso_materias", findOrCreateCursoMateria(idInstitucion, primeroPrimaria.getId(), lenguaje.getId(), gestion.getId(), 5));
-        mark(stats, "curso_materias", findOrCreateCursoMateria(idInstitucion, segundoPrimaria.getId(), matematica.getId(), gestion.getId(), 6));
-        mark(stats, "curso_materias", findOrCreateCursoMateria(idInstitucion, segundoPrimaria.getId(), ciencias.getId(), gestion.getId(), 4));
-        mark(stats, "curso_materias", findOrCreateCursoMateria(idInstitucion, primeroSecundaria.getId(), matematica.getId(), gestion.getId(), 6));
-        mark(stats, "curso_materias", findOrCreateCursoMateria(idInstitucion, primeroSecundaria.getId(), lenguaje.getId(), gestion.getId(), 5));
+    private void seedAulas(SchoolSpec school, UUID idInstitucion, SeedStats stats) {
+        int total = Math.max(COURSES.length * school.parallels().size(), 12);
+        for (int i = 1; i <= total; i++) {
+            String bloque = i <= total / 2 ? "Bloque A" : "Bloque B";
+            String recursos = i % 4 == 0 ? "Pizarra|Proyector|Internet"
+                    : i % 3 == 0 ? "Pizarra|Computadoras"
+                    : "Pizarra";
+            mark(stats, "aulas", findOrCreateAula(
+                    idInstitucion,
+                    school.code() + "-AULA-" + pad(i, 3),
+                    "Aula " + pad(i, 2),
+                    school.parallelCapacity(),
+                    bloque + ", piso " + (((i - 1) / 6) + 1),
+                    recursos
+            ));
+        }
+    }
 
-        Docente docenteMatematica = mark(stats, "docentes", findOrCreateDocente(
-                idInstitucion, docenteMate.getId(), "DOC-DEMO-001", "9001001", "Ana", "Rojas",
-                "76000001", "docente.mate.demo@si2.test", "Matematica"));
-        Docente docenteLenguaje = mark(stats, "docentes", findOrCreateDocente(
-                idInstitucion, docenteLeng.getId(), "DOC-DEMO-002", "9001002", "Carlos", "Mendez",
-                "76000002", "docente.lenguaje.demo@si2.test", "Lenguaje y Comunicacion"));
+    private void seedCursoMaterias(UUID idInstitucion, Curso curso, GestionAcademica gestion, Map<String, Materia> materias, SeedStats stats) {
+        for (String code : subjectCodesFor(curso.getNivel())) {
+            Materia materia = materias.get(code);
+            mark(stats, "curso_materias", findOrCreateCursoMateria(
+                    idInstitucion, curso.getId(), materia.getId(), gestion.getId(), materia.getCargaHoraria()));
+        }
+    }
 
-        Estudiante lucia = mark(stats, "estudiantes", findOrCreateEstudiante(
-                idInstitucion, estudianteLucia.getId(), "EST-DEMO-001", "9101001", "Lucia", "Vargas",
-                LocalDate.of(2018, 3, 12), "FEMENINO", "Barrio Equipetrol", "77000001", "estudiante.lucia.demo@si2.test"));
-        Estudiante mateo = mark(stats, "estudiantes", findOrCreateEstudiante(
-                idInstitucion, estudianteMateo.getId(), "EST-DEMO-002", "9101002", "Mateo", "Flores",
-                LocalDate.of(2018, 7, 20), "MASCULINO", "Barrio Hamacas", "77000002", "estudiante.mateo.demo@si2.test"));
-        Estudiante sofia = mark(stats, "estudiantes", findOrCreateEstudiante(
-                idInstitucion, estudianteSofia.getId(), "EST-DEMO-003", "9101003", "Sofia", "Rojas",
-                LocalDate.of(2017, 10, 5), "FEMENINO", "Barrio Las Palmas", "77000003", "estudiante.sofia.demo@si2.test"));
+    private void seedAsignaciones(UUID idInstitucion, Curso curso, Paralelo paralelo, GestionAcademica gestion,
+                                  Map<String, Materia> materias, List<Docente> docentes, SeedStats stats) {
+        int base = Math.abs(curso.getCodigo().hashCode() + paralelo.getNombre().hashCode());
+        int index = 0;
+        for (String code : subjectCodesFor(curso.getNivel())) {
+            Materia materia = materias.get(code);
+            Docente docente = docentes.get((base + index) % docentes.size());
+            mark(stats, "asignaciones", findOrCreateAsignacion(
+                    idInstitucion, docente.getId(), materia.getId(), paralelo.getId(), gestion.getId()));
+            index++;
+        }
+    }
 
-        Tutor maria = mark(stats, "tutores", findOrCreateTutor(
-                idInstitucion, tutorMaria.getId(), "9201001", "Maria", "Lopez",
-                "78000001", "tutor.maria.demo@si2.test", "Barrio Equipetrol"));
-        Tutor jorge = mark(stats, "tutores", findOrCreateTutor(
-                idInstitucion, tutorJorge.getId(), "9201002", "Jorge", "Flores",
-                "78000002", "tutor.jorge.demo@si2.test", "Barrio Hamacas"));
+    private int seedStudentsForParallel(SchoolSpec school, UUID idInstitucion, Curso curso, Paralelo paralelo,
+                                        GestionAcademica gestion, Roles roles, SeedStats stats,
+                                        List<SeedUser> usuarios, int startIndex, int parallelIndex) {
+        int next = startIndex;
+        for (int i = 0; i < school.studentsPerParallel(); i++) {
+            boolean female = (next + i) % 2 == 0;
+            String nombre = female ? NOMBRES_F[(next + i) % NOMBRES_F.length] : NOMBRES_M[(next + i) % NOMBRES_M.length];
+            String apellido = APELLIDOS[(next + i) % APELLIDOS.length] + " " + APELLIDOS[(next + i + 5) % APELLIDOS.length];
+            String codigo = school.code() + "-EST-" + pad(next, 4);
+            String documento = docNumber(school, 40_000 + next);
+            String sexo = female ? "FEMENINO" : "MASCULINO";
+            LocalDate birthDate = LocalDate.of(2026 - courseAge(curso), ((next + i) % 12) + 1, ((next + i) % 24) + 1);
 
-        mark(stats, "estudiante_tutores", findOrCreateEstudianteTutor(idInstitucion, lucia.getId(), maria.getId(), "Madre", true));
-        mark(stats, "estudiante_tutores", findOrCreateEstudianteTutor(idInstitucion, mateo.getId(), jorge.getId(), "Padre", true));
-        mark(stats, "estudiante_tutores", findOrCreateEstudianteTutor(idInstitucion, sofia.getId(), maria.getId(), "Tia", true));
+            Usuario usuario = null;
+            if (i < 2 && parallelIndex <= 4) {
+                String correo = "estudiante." + pad(next, 4) + "@" + school.domain();
+                usuario = mark(stats, "usuarios", findOrCreateUsuario(correo, nombre, apellido, idInstitucion, roles.estudiante()));
+                usuarios.add(user(correo, "ESTUDIANTE", nombre + " " + apellido, curso.getNombre() + " " + paralelo.getNombre()));
+            }
 
-        mark(stats, "inscripciones", findOrCreateInscripcion(idInstitucion, lucia.getId(), gestion.getId(), primeroA.getId(), LocalDate.of(2026, 2, 3)));
-        mark(stats, "inscripciones", findOrCreateInscripcion(idInstitucion, mateo.getId(), gestion.getId(), primeroA.getId(), LocalDate.of(2026, 2, 3)));
-        mark(stats, "inscripciones", findOrCreateInscripcion(idInstitucion, sofia.getId(), gestion.getId(), segundoA.getId(), LocalDate.of(2026, 2, 4)));
+            Estudiante estudiante = mark(stats, "estudiantes", findOrCreateEstudiante(
+                    idInstitucion,
+                    usuario == null ? null : usuario.getId(),
+                    codigo,
+                    documento,
+                    nombre,
+                    apellido,
+                    birthDate,
+                    sexo,
+                    school.city() + ", zona " + APELLIDOS[(next + 3) % APELLIDOS.length],
+                    "7" + pad(700_000 + next, 7),
+                    usuario == null ? null : usuario.getCorreo()
+            ));
 
-        mark(stats, "asignaciones", findOrCreateAsignacion(idInstitucion, docenteMatematica.getId(), matematica.getId(), primeroA.getId(), gestion.getId()));
-        mark(stats, "asignaciones", findOrCreateAsignacion(idInstitucion, docenteLenguaje.getId(), lenguaje.getId(), primeroA.getId(), gestion.getId()));
-        mark(stats, "asignaciones", findOrCreateAsignacion(idInstitucion, docenteMatematica.getId(), matematica.getId(), segundoA.getId(), gestion.getId()));
-        mark(stats, "asignaciones", findOrCreateAsignacion(idInstitucion, docenteLenguaje.getId(), lenguaje.getId(), secundariaA.getId(), gestion.getId()));
+            Tutor tutor = mark(stats, "tutores", findOrCreateTutor(
+                    idInstitucion,
+                    null,
+                    docNumber(school, 80_000 + next),
+                    female ? "Maria" : "Jorge",
+                    APELLIDOS[(next + 8) % APELLIDOS.length],
+                    "7" + pad(800_000 + next, 7),
+                    null,
+                    school.city() + ", zona " + APELLIDOS[(next + 4) % APELLIDOS.length]
+            ));
+            mark(stats, "estudiante_tutores", findOrCreateEstudianteTutor(
+                    idInstitucion, estudiante.getId(), tutor.getId(), female ? "Madre" : "Padre", true));
+            mark(stats, "inscripciones", findOrCreateInscripcion(
+                    idInstitucion, estudiante.getId(), gestion.getId(), paralelo.getId(), LocalDate.of(2026, 2, 3 + (i % 10))));
+            next++;
+        }
+        return next;
+    }
 
-        return new SeedResult(INSTITUCION_CODIGO, GESTION_NOMBRE, stats.creados(), stats.existentes(), usuarios);
+    private String[] subjectCodesFor(String nivel) {
+        if ("Secundaria".equals(nivel)) {
+            return new String[]{"MAT", "LEN", "CS", "VER", "APV", "EFD", "ING", "TT", "BIO", "FIS", "QUI", "FIL"};
+        }
+        return new String[]{"MAT", "LEN", "CN", "CS", "VER", "APV", "EFD", "MUS"};
+    }
+
+    private int courseAge(Curso curso) {
+        String codigo = curso.getCodigo();
+        if (codigo.startsWith("PRI-")) {
+            return 5 + Integer.parseInt(codigo.substring(4));
+        }
+        return 11 + Integer.parseInt(codigo.substring(4));
     }
 
     private Roles loadRoles() {
@@ -191,21 +351,62 @@ public class SyntheticDataSeeder {
                 .orElseThrow(() -> new IllegalStateException("Rol '" + codigo + "' no encontrado. Ejecute db-script.sql primero."));
     }
 
-    private SeedEntity<Institucion> findOrCreateInstitucion() {
+    private SeedEntity<Institucion> findOrCreateInstitucion(SchoolSpec school) {
         return findOrCreate(
-                () -> institucionRepository.findByCodigo(INSTITUCION_CODIGO).orElse(null),
+                () -> institucionRepository.findByCodigo(school.code()).orElse(null),
                 () -> institucionRepository.save(Institucion.builder()
-                        .codigo(INSTITUCION_CODIGO)
-                        .nombre("Colegio Demo Semilla")
-                        .tipoInstitucion("PRIVADO")
-                        .telefono("70010000")
-                        .correo("contacto.seed@si2.test")
-                        .direccion("Av. Demo 123, Santa Cruz")
+                        .codigo(school.code())
+                        .nombre(school.name())
+                        .tipoInstitucion(school.type())
+                        .telefono("7" + pad(Math.abs(school.code().hashCode()) % 1_000_000, 7))
+                        .correo("contacto@" + school.domain())
+                        .direccion(school.address() + ", " + school.city() + " - Bolivia")
+                        .build())
+        );
+    }
+
+    private void seedConfiguraciones(SchoolSpec school, UUID idInstitucion, SeedStats stats) {
+        for (ConfiguracionCatalog.Definition definition : ConfiguracionCatalog.DEFINITIONS) {
+            String value = configValue(school, definition);
+            mark(stats, "configuraciones", findOrCreateConfiguracion(idInstitucion, definition, value));
+        }
+    }
+
+    private String configValue(SchoolSpec school, ConfiguracionCatalog.Definition definition) {
+        return switch (definition.getClave()) {
+            case "NOMBRE_CORTO" -> school.shortName();
+            case "DESCRIPCION" -> school.name() + " - " + school.city() + ", Bolivia";
+            case "TELEFONO_CONTACTO" -> "7" + pad(Math.abs(school.code().hashCode()) % 1_000_000, 7);
+            case "CORREO_CONTACTO" -> "contacto@" + school.domain();
+            case "SITIO_WEB" -> "https://www." + school.domain();
+            case "COLOR_PRIMARIO" -> "CONVENIO".equals(school.type()) ? "#1d4ed8" : "#0f766e";
+            case "MAX_ALUMNOS_AULA" -> String.valueOf(school.parallelCapacity());
+            case "FORMATO_CODIGO_ESTUDIANTE" -> school.code() + "-EST-{SEQ}";
+            default -> ConfiguracionCatalog.resolveDefaultValue(definition, school.type());
+        };
+    }
+
+    private SeedEntity<ConfiguracionInstitucion> findOrCreateConfiguracion(
+            UUID idInstitucion, ConfiguracionCatalog.Definition definition, String value) {
+        return findOrCreate(
+                () -> configuracionInstitucionRepository
+                        .findByIdInstitucionAndClave(idInstitucion, definition.getClave())
+                        .orElse(null),
+                () -> configuracionInstitucionRepository.save(ConfiguracionInstitucion.builder()
+                        .idInstitucion(idInstitucion)
+                        .clave(definition.getClave())
+                        .valor(value)
+                        .tipoValor(definition.getTipoValor())
+                        .descripcion(definition.getDescripcion())
                         .build())
         );
     }
 
     private SeedEntity<GestionAcademica> findOrCreateGestion(UUID idInstitucion) {
+        GestionAcademica active = gestionAcademicaRepository.findByIdInstitucionAndActivaTrue(idInstitucion).orElse(null);
+        if (active != null) {
+            return new SeedEntity<>(active, false);
+        }
         return findOrCreate(
                 () -> gestionAcademicaRepository.findAllByIdInstitucion(idInstitucion).stream()
                         .filter(g -> GESTION_NOMBRE.equals(g.getNombre()))
@@ -235,22 +436,22 @@ public class SyntheticDataSeeder {
         );
     }
 
-    private SeedEntity<Curso> findOrCreateCurso(UUID idInstitucion, String codigo, String nombre, String nivel, int ordenVisual) {
+    private SeedEntity<Curso> findOrCreateCurso(UUID idInstitucion, CourseSpec spec) {
         return findOrCreate(
                 () -> cursoRepository.findAllByIdInstitucion(idInstitucion).stream()
-                        .filter(c -> codigo.equals(c.getCodigo()))
+                        .filter(c -> spec.code().equals(c.getCodigo()))
                         .findFirst()
                         .orElse(null),
                 () -> {
                     Curso curso = Curso.builder()
                             .idInstitucion(idInstitucion)
-                            .codigo(codigo)
-                            .nombre(nombre)
-                            .nivel(nivel)
+                            .codigo(spec.code())
+                            .nombre(spec.name())
+                            .nivel(spec.level())
                             .build();
                     Curso saved = cursoRepository.save(curso);
                     entityManager.flush();
-                    jdbcTemplate.update("UPDATE sia.curso SET orden_visual = ? WHERE id = ?", ordenVisual, saved.getId());
+                    jdbcTemplate.update("UPDATE sia.curso SET orden_visual = ? WHERE id = ?", spec.order(), saved.getId());
                     return saved;
                 }
         );
@@ -272,18 +473,35 @@ public class SyntheticDataSeeder {
         );
     }
 
-    private SeedEntity<Materia> findOrCreateMateria(UUID idInstitucion, String codigo, String nombre, String area, int cargaHoraria) {
+    private SeedEntity<Materia> findOrCreateMateria(UUID idInstitucion, SubjectSpec spec) {
         return findOrCreate(
                 () -> materiaRepository.findAllByIdInstitucion(idInstitucion).stream()
-                        .filter(m -> codigo.equals(m.getCodigo()))
+                        .filter(m -> spec.code().equals(m.getCodigo()))
                         .findFirst()
                         .orElse(null),
                 () -> materiaRepository.save(Materia.builder()
                         .idInstitucion(idInstitucion)
+                        .codigo(spec.code())
+                        .nombre(spec.name())
+                        .area(spec.area())
+                        .cargaHoraria(spec.hours())
+                        .build())
+        );
+    }
+
+    private SeedEntity<Aula> findOrCreateAula(UUID idInstitucion, String codigo, String nombre, int capacidad, String ubicacion, String recursos) {
+        return findOrCreate(
+                () -> aulaRepository.findAllByIdInstitucionOrderByEstadoAscNombreAsc(idInstitucion).stream()
+                        .filter(a -> codigo.equals(a.getCodigo()))
+                        .findFirst()
+                        .orElse(null),
+                () -> aulaRepository.save(Aula.builder()
+                        .idInstitucion(idInstitucion)
                         .codigo(codigo)
                         .nombre(nombre)
-                        .area(area)
-                        .cargaHoraria(cargaHoraria)
+                        .capacidad(capacidad)
+                        .ubicacion(ubicacion)
+                        .recursos(recursos)
                         .build())
         );
     }
@@ -448,6 +666,20 @@ public class SyntheticDataSeeder {
         return new SeedUser(correo, PASSWORD, rol, nombre, referencia);
     }
 
+    private String shortName(String name) {
+        String[] words = name.split(" ");
+        return words.length <= 2 ? name : words[words.length - 2] + " " + words[words.length - 1];
+    }
+
+    private String pad(int value, int digits) {
+        return String.format("%0" + digits + "d", value);
+    }
+
+    private String docNumber(SchoolSpec school, int base) {
+        int prefix = Math.abs(school.code().hashCode()) % 100;
+        return prefix + pad(base, 6);
+    }
+
     private record Roles(
             Rol adminInstitucion,
             Rol director,
@@ -456,6 +688,28 @@ public class SyntheticDataSeeder {
             Rol estudiante,
             Rol tutor
     ) {
+    }
+
+    private record SchoolSpec(
+            String code,
+            String name,
+            String type,
+            String city,
+            String address,
+            String domain,
+            List<String> parallels,
+            int studentsPerParallel,
+            int parallelCapacity
+    ) {
+        private String shortName() {
+            return name.contains("Cristo Rey") ? "Cristo Rey" : "U.E. Modelo";
+        }
+    }
+
+    private record CourseSpec(String code, String name, String level, int order, int expectedAge) {
+    }
+
+    private record SubjectSpec(String code, String name, String area, int hours) {
     }
 
     private record SeedEntity<T>(T value, boolean created) {
