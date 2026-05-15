@@ -13,4 +13,8 @@ public interface CursoRepository extends JpaRepository<Curso, UUID> {
     Optional<Curso> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
 
     boolean existsByIdInstitucionAndNombre(UUID idInstitucion, String nombre);
+
+    long countByIdInstitucion(UUID idInstitucion);
+
+    long countByIdInstitucionAndEstado(UUID idInstitucion, String estado);
 }

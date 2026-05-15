@@ -13,4 +13,10 @@ public interface InstitucionRepository extends JpaRepository<Institucion, UUID> 
     Optional<Institucion> findByCodigo(String codigo);
 
     List<Institucion> findAllByEstado(String estado);
+
+    long countByEstado(String estado);
+
+    long countByTipoInstitucion(String tipoInstitucion);
+
+    List<Institucion> findTop6ByOrderByCreadoEnDesc();
 }

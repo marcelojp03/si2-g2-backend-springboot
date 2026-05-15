@@ -12,7 +12,13 @@ public interface DocenteRepository extends JpaRepository<Docente, UUID> {
 
     Optional<Docente> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
 
+    Optional<Docente> findByIdUsuarioAndIdInstitucion(UUID idUsuario, UUID idInstitucion);
+
     boolean existsByIdInstitucionAndCodigo(UUID idInstitucion, String codigo);
 
     boolean existsByIdInstitucionAndDocumentoIdentidad(UUID idInstitucion, String documentoIdentidad);
+
+    long countByIdInstitucion(UUID idInstitucion);
+
+    long countByIdInstitucionAndEstado(UUID idInstitucion, String estado);
 }

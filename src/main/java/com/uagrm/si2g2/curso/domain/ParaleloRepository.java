@@ -17,4 +17,8 @@ public interface ParaleloRepository extends JpaRepository<Paralelo, UUID> {
     Optional<Paralelo> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
 
     boolean existsByIdInstitucionAndIdCursoAndNombreAndIdGestionAcademica(UUID idInstitucion, UUID idCurso, String nombre, UUID idGestionAcademica);
+
+    long countByIdInstitucion(UUID idInstitucion);
+
+    long countByIdInstitucionAndEstado(UUID idInstitucion, String estado);
 }

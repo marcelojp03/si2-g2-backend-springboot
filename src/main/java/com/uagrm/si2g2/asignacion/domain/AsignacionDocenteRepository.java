@@ -1,6 +1,8 @@
 package com.uagrm.si2g2.asignacion.domain;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,4 +22,19 @@ public interface AsignacionDocenteRepository extends JpaRepository<AsignacionDoc
 
     boolean existsByIdInstitucionAndIdDocenteAndIdMateriaAndIdParaleloAndIdGestion(
             UUID idInstitucion, UUID idDocente, UUID idMateria, UUID idParalelo, UUID idGestion);
+
+    long countByIdInstitucion(UUID idInstitucion);
+
+    long countByIdInstitucionAndEstado(UUID idInstitucion, String estado);
+
+    long countByIdInstitucionAndIdGestionAndEstado(UUID idInstitucion, UUID idGestion, String estado);
+
+    @Query("""
+            select count(distinct a.idDocente)
+            from AsignacionDocente a
+            where a.idInstitucion = :idInstitucion
+              and a.estado = :estado
+            """)
+    long countDistinctDocentesByInstitutionAndEstado(@Param("idInstitucion") UUID idInstitucion,
+                                                     @Param("estado") String estado);
 }

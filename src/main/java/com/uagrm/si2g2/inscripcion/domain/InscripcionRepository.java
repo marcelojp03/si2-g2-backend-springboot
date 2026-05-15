@@ -22,4 +22,10 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, UUID> 
             UUID idInstitucion, UUID idEstudiante, UUID idGestion, String estado);
 
     long countByIdInstitucionAndIdParaleloAndEstado(UUID idInstitucion, UUID idParalelo, String estado);
+
+    long countByIdInstitucion(UUID idInstitucion);
+
+    long countByIdInstitucionAndEstado(UUID idInstitucion, String estado);
+
+    long countByIdInstitucionAndIdGestionAndEstado(UUID idInstitucion, UUID idGestion, String estado);
 }

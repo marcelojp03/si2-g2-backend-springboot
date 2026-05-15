@@ -18,6 +18,8 @@ public interface GestionAcademicaRepository extends JpaRepository<GestionAcademi
 
     Optional<GestionAcademica> findByIdInstitucionAndActivaTrue(UUID idInstitucion);
 
+    boolean existsByIdInstitucionAndActivaTrue(UUID idInstitucion);
+
     @Modifying
     @Query("UPDATE GestionAcademica g SET g.activa = false WHERE g.idInstitucion = :idInstitucion AND g.activa = true")
     void desactivarTodasPorInstitucion(UUID idInstitucion);

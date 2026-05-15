@@ -15,4 +15,8 @@ public interface MateriaRepository extends JpaRepository<Materia, UUID> {
     boolean existsByIdInstitucionAndCodigo(UUID idInstitucion, String codigo);
 
     boolean existsByIdInstitucionAndNombre(UUID idInstitucion, String nombre);
+
+    long countByIdInstitucion(UUID idInstitucion);
+
+    long countByIdInstitucionAndEstado(UUID idInstitucion, String estado);
 }
