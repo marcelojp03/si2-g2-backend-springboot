@@ -25,6 +25,11 @@ public final class PermissionCatalog {
     public static final String MI_AREA_READ = "MI_AREA_READ";
     public static final String AUDITORIA_READ = "AUDITORIA_READ";
 
+    public static final String ASISTENCIA_READ = "ASISTENCIA_READ";
+    public static final String ASISTENCIA_WRITE = "ASISTENCIA_WRITE";
+    public static final String ASISTENCIA_READ_ALL = "ASISTENCIA_READ_ALL";
+    public static final String ASISTENCIA_BACKDATE = "ASISTENCIA_BACKDATE";
+
     public static final Set<String> ADMIN_INSTITUCION = Set.of(
             USUARIOS_READ, USUARIOS_WRITE,
             CONFIGURACION_READ, CONFIGURACION_WRITE,
@@ -33,7 +38,8 @@ public final class PermissionCatalog {
             OPERACION_READ, OPERACION_WRITE,
             ROLES_READ, ROLES_WRITE,
             MI_AREA_READ,
-            AUDITORIA_READ
+            AUDITORIA_READ,
+            ASISTENCIA_READ, ASISTENCIA_WRITE, ASISTENCIA_READ_ALL, ASISTENCIA_BACKDATE
     );
 
     public static final Set<String> DIRECTOR = Set.of(
@@ -44,19 +50,22 @@ public final class PermissionCatalog {
             OPERACION_READ, OPERACION_WRITE,
             ROLES_READ,
             MI_AREA_READ,
-            AUDITORIA_READ
+            AUDITORIA_READ,
+            ASISTENCIA_READ, ASISTENCIA_READ_ALL
     );
 
     public static final Set<String> SECRETARIO = Set.of(
             USUARIOS_READ,
             GESTION_READ, GESTION_WRITE,
             PERSONAS_READ, PERSONAS_WRITE,
-            OPERACION_READ, OPERACION_WRITE
+            OPERACION_READ, OPERACION_WRITE,
+            ASISTENCIA_READ, ASISTENCIA_READ_ALL
     );
 
     public static final Set<String> DOCENTE = Set.of(
             OPERACION_READ,
-            MI_AREA_READ
+            MI_AREA_READ,
+            ASISTENCIA_READ
     );
 
     public static final Set<String> ESTUDIANTE = Set.of();
@@ -76,7 +85,12 @@ public final class PermissionCatalog {
             new Definition(ROLES_READ, "Roles: lectura", "ROLES", "READ", "Permite consultar roles y permisos"),
             new Definition(ROLES_WRITE, "Roles: escritura", "ROLES", "WRITE", "Permite crear y editar roles institucionales"),
             new Definition(MI_AREA_READ, "Mi área: lectura", "MI_AREA", "READ", "Permite acceder al área operativa del docente"),
-            new Definition(AUDITORIA_READ, "Auditoría: lectura", "AUDITORIA", "READ", "Permite consultar la bitácora de auditoría")
+            new Definition(AUDITORIA_READ, "Auditoría: lectura", "AUDITORIA", "READ", "Permite consultar la bitácora de auditoría"),
+
+            new Definition(ASISTENCIA_READ, "Asistencia: lectura", "ASISTENCIA", "READ", "Permite consultar registros y plantillas de asistencia"),
+            new Definition(ASISTENCIA_WRITE, "Asistencia: escritura", "ASISTENCIA", "WRITE", "Permite registrar y modificar asistencia institucional"),
+            new Definition(ASISTENCIA_READ_ALL, "Asistencia: lectura institucional", "ASISTENCIA", "READ_ALL", "Permite consultar asistencias de todos los docentes de la institución"),
+            new Definition(ASISTENCIA_BACKDATE, "Asistencia: fechas pasadas", "ASISTENCIA", "BACKDATE", "Permite registrar o modificar asistencia de fechas pasadas")
     );
 
     @Getter
