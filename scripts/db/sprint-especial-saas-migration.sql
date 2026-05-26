@@ -454,6 +454,17 @@ CREATE OR REPLACE TRIGGER trg_solicitud_onboarding_actualizado_en
     FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
 
 -- =========================================================
+-- I. NOTIFICACIONES PUSH — FCM TOKEN EN USUARIO
+-- =========================================================
+-- Almacena el token FCM del dispositivo móvil por usuario.
+-- Se actualiza cada vez que la app Flutter inicia sesión.
+
+ALTER TABLE usuario
+    ADD COLUMN IF NOT EXISTS fcm_token TEXT NULL;
+
+COMMENT ON COLUMN usuario.fcm_token IS 'Token FCM del dispositivo móvil (Firebase Cloud Messaging). Nulo si el usuario no usa la app móvil.';
+
+-- =========================================================
 -- FIN DEL SCRIPT
 -- =========================================================
 -- Tablas creadas:
@@ -464,5 +475,8 @@ CREATE OR REPLACE TRIGGER trg_solicitud_onboarding_actualizado_en
 --   reporte_configurable, reporte_campo, bitacora_reporte
 --   solicitud_onboarding
 --
--- Total: 12 tablas nuevas
+-- Columnas alteradas:
+--   usuario.fcm_token (TEXT NULL) — token push FCM para app móvil
+--
+-- Total: 12 tablas nuevas + 1 columna en tabla existente
 -- =========================================================
