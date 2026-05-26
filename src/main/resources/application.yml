@@ -58,9 +58,11 @@ app:
   security:
     account-recovery:
       expiration-minutes: ${ACCOUNT_RECOVERY_EXPIRATION_MINUTES:15}
-  fastapi:
-    base-url: ${FASTAPI_BASE_URL:http://localhost:8001}
       max-attempts: ${ACCOUNT_RECOVERY_MAX_ATTEMPTS:5}
       expose-debug-data: ${ACCOUNT_RECOVERY_EXPOSE_DEBUG_DATA:false}
     audit:
       hash-secret: ${AUDIT_HASH_SECRET:local-audit-secret-change-me}
+  fastapi:
+    base-url: ${FASTAPI_BASE_URL:http://localhost:8001}
+  firebase:
+    credentials-path: ${FIREBASE_CREDENTIALS_PATH:gestion-academica-firebase.json}

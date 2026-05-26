@@ -101,6 +101,7 @@ CREATE TABLE usuario (
     requiere_cambio_contrasena BOOLEAN NOT NULL DEFAULT FALSE,
     estado VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'INACTIVO', 'BLOQUEADO')),
     ultimo_acceso TIMESTAMPTZ NULL,
+    fcm_token TEXT NULL,
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
