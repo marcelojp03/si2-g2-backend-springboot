@@ -23,6 +23,7 @@ import com.uagrm.si2g2.inscripcion.domain.Inscripcion;
 import com.uagrm.si2g2.inscripcion.domain.InscripcionRepository;
 import com.uagrm.si2g2.materia.domain.Materia;
 import com.uagrm.si2g2.materia.domain.MateriaRepository;
+import com.uagrm.si2g2.institucion.application.ConfiguracionService;
 import com.uagrm.si2g2.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -61,7 +62,60 @@ public class AsistenciaService {
     private final CursoRepository cursoRepository;
     private final GestionAcademicaRepository gestionAcademicaRepository;
 
+    private final ConfiguracionService configuracionService;
     private final AuditoriaService auditoriaService;
+
+    /**
+     * Calcula el resumen de asistencia por estudiante para una asignación.
+     * Incluye porcentaje de asistencia y si cumple el mínimo configurado
+     * (clave: PORCENTAJE_ASISTENCIA_MINIMO, default 75%).
+     */
+    @Transactional(readOnly = true)
+    public List<java.util.Map<String, Object>> obtenerResumenPorAsignacion(UUID idAsignacionDocente) {
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        AsignacionDocente asignacion = buscarAsignacionActiva(idAsignacionDocente, idInstitucion);
+        validarAccesoLectura(asignacion);
+
+        int porcentajeMinimo = configuracionService.getInt(idInstitucion, "PORCENTAJE_ASISTENCIA_MINIMO");
+
+        List<AsistenciaRegistro> registros = registroRepository
+                .findAllByIdInstitucionAndIdAsignacionDocente(idInstitucion, idAsignacionDocente);
+
+        int totalSesiones = registros.size();
+
+        List<UUID> idsRegistro = registros.stream().map(AsistenciaRegistro::getId).toList();
+
+        Map<UUID, Long> presentesPorInscripcion = new HashMap<>();
+        if (!idsRegistro.isEmpty()) {
+            detalleRepository.findAllByIdAsistenciaRegistroIn(idsRegistro).forEach(d -> {
+                if ("PRESENTE".equals(d.getEstadoAsistencia()) || "TARDANZA".equals(d.getEstadoAsistencia())) {
+                    presentesPorInscripcion.merge(d.getIdInscripcion(), 1L, Long::sum);
+                }
+            });
+        }
+
+        List<Inscripcion> inscripciones = obtenerInscripcionesActivasDeAsignacion(idInstitucion, asignacion);
+        List<UUID> idsEstudiantes = inscripciones.stream().map(Inscripcion::getIdEstudiante).distinct().toList();
+        Map<UUID, Estudiante> estudiantesPorId = estudianteRepository.findAllById(idsEstudiantes)
+                .stream().collect(Collectors.toMap(Estudiante::getId, Function.identity()));
+
+        return inscripciones.stream().map(ins -> {
+            Estudiante est = estudiantesPorId.get(ins.getIdEstudiante());
+            long presentes = presentesPorInscripcion.getOrDefault(ins.getId(), 0L);
+            double porcentaje = totalSesiones == 0 ? 0.0 : Math.round(presentes * 100.0 / totalSesiones * 100.0) / 100.0;
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("idInscripcion", ins.getId());
+            row.put("idEstudiante", est != null ? est.getId() : null);
+            row.put("codigoEstudiante", est != null ? est.getCodigoEstudiante() : null);
+            row.put("nombreCompleto", est != null ? est.getNombres() + " " + est.getApellidos() : null);
+            row.put("totalSesiones", totalSesiones);
+            row.put("sesionesPresente", (int) presentes);
+            row.put("porcentajeAsistencia", porcentaje);
+            row.put("porcentajeMinimoRequerido", porcentajeMinimo);
+            row.put("cumpleMinimo", porcentaje >= porcentajeMinimo);
+            return row;
+        }).sorted(Comparator.comparing(m -> String.valueOf(m.get("nombreCompleto")))).toList();
+    }
 
     @Transactional(readOnly = true)
     public List<AsistenciaAsignacionResponse> listarMisAsignaciones() {

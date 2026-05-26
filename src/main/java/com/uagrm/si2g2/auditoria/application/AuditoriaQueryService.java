@@ -41,6 +41,15 @@ public class AuditoriaQueryService {
             if (filtro.getExito() != null) {
                 predicates.add(cb.equal(root.get("exito"), filtro.getExito()));
             }
+            if (filtro.getIdUsuario() != null) {
+                predicates.add(cb.equal(root.get("idUsuario"), filtro.getIdUsuario()));
+            }
+            if (filtro.getFechaDesde() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("fechaEvento"), filtro.getFechaDesde()));
+            }
+            if (filtro.getFechaHasta() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("fechaEvento"), filtro.getFechaHasta()));
+            }
 
             query.orderBy(cb.desc(root.get("fechaEvento")));
             return cb.and(predicates.toArray(Predicate[]::new));
