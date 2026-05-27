@@ -36,15 +36,10 @@ import java.util.UUID;
  * - creadoEn, actualizadoEn: Timestamps automáticos
  */
 @Entity
-@Table(
-    name = "evaluacion_materia",
-    uniqueConstraints = {
-        @UniqueConstraint(
-            name = "uk_eval_materia_periodo_nombre",
-            columnNames = {"id_institucion", "id_materia", "periodo", "nombre"}
-        )
-    }
-)
+@Table(name = "evaluacion_materia", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_eval_materia_periodo_nombre", columnNames = { "id_institucion", "id_materia",
+                "periodo", "nombre" })
+})
 @Getter
 @Setter
 @Builder

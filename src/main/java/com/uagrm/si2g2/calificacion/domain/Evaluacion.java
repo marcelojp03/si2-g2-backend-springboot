@@ -14,7 +14,8 @@ import java.util.UUID;
  * 
  * Representa una evaluación a nivel de MATERIA (no de asignación docente).
  * Permite que todos los estudiantes de una materia en un período académico
- * se evalúen con la misma estructura, independientemente del docente o paralelo.
+ * se evalúen con la misma estructura, independientemente del docente o
+ * paralelo.
  * 
  * CARACTERÍSTICAS:
  * - Vinculada a Materia + Período (no a Asignación Docente)

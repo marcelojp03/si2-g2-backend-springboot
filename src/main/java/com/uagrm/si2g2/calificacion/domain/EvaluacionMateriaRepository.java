@@ -18,15 +18,13 @@ public interface EvaluacionMateriaRepository extends JpaRepository<EvaluacionMat
     List<EvaluacionMateria> findAllByIdInstitucionAndIdMateriaAndPeriodo(
             UUID idInstitucion,
             UUID idMateria,
-            Integer periodo
-    );
+            Integer periodo);
 
     boolean existsByIdInstitucionAndIdMateriaAndPeriodoAndNombreIgnoreCase(
             UUID idInstitucion,
             UUID idMateria,
             Integer periodo,
-            String nombre
-    );
+            String nombre);
 
     @Query("""
             select coalesce(sum(e.ponderacion), 0)
@@ -38,7 +36,7 @@ public interface EvaluacionMateriaRepository extends JpaRepository<EvaluacionMat
               and (:idExcluir is null or e.id <> :idExcluir)
             """)
     BigDecimal sumPonderacionActiva(@Param("idInstitucion") UUID idInstitucion,
-                                    @Param("idMateria") UUID idMateria,
-                                    @Param("periodo") Integer periodo,
-                                    @Param("idExcluir") UUID idExcluir);
+            @Param("idMateria") UUID idMateria,
+            @Param("periodo") Integer periodo,
+            @Param("idExcluir") UUID idExcluir);
 }

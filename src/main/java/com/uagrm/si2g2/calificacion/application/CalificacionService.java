@@ -157,7 +157,8 @@ public class CalificacionService {
             throw new EntityNotFoundException("Materia no encontrada");
         }
 
-        // 3. Verificar acceso: Un docente solo puede ver evaluaciones de materias que enseña.
+        // 3. Verificar acceso: Un docente solo puede ver evaluaciones de materias que
+        // enseña.
         // Un admin/director puede ver todas.
         validarAccesoLecturaMateria(idMateria, idInstitucion);
 
@@ -213,13 +214,14 @@ public class CalificacionService {
     public EvaluacionResponse crearEvaluacion(EvaluacionRequest request) {
         // 1. Contexto base: institución actual
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
-        
+
         // 2. Validar que la materia existe
         if (!materiaRepository.existsByIdAndIdInstitucion(request.getIdMateria(), idInstitucion)) {
             throw new EntityNotFoundException("Materia no encontrada");
         }
 
-        // 3. Validar permisos: Solo docentes de esta materia o administradores pueden crear evaluaciones
+        // 3. Validar permisos: Solo docentes de esta materia o administradores pueden
+        // crear evaluaciones
         validarAccesoEscrituraMateria(request.getIdMateria(), idInstitucion);
 
         // 4. El periodo debe existir según la configuración institucional.
@@ -275,9 +277,8 @@ public class CalificacionService {
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
         Evaluacion evaluacion = buscarEvaluacion(id, idInstitucion);
 
-        // 2. Se obtiene la asignacion de esa evaluacion para validar permisos.
-        AsignacionDocente asignacion = buscarAsignacionActiva(evaluacion.getIdAsignacionDocente(), idInstitucion);
-        validarAccesoEscritura(asignacion);
+        // 2. Se valida acceso: docente solo puede editar materias que enseña.
+        validarAccesoEscrituraMateria(evaluacion.getIdMateria(), idInstitucion);
 
         // 3. Se guarda una foto de los datos anteriores para auditoria detallada.
         // Esto permite comparar "antes" y "despues".
@@ -297,7 +298,7 @@ public class CalificacionService {
 
         // 5. Se valida la ponderacion excluyendo la evaluacion actual.
         // Asi se puede editar una evaluacion sin contarse dos veces en la suma.
-        validarPonderacionTotal(idInstitucion, asignacion.getId(), evaluacion.getPeriodo(), ponderacion,
+        validarPonderacionTotal(idInstitucion, evaluacion.getIdMateria(), evaluacion.getPeriodo(), ponderacion,
                 evaluacion.getId());
 
         // 6. Se aplican los nuevos valores a la entidad existente.
@@ -326,16 +327,31 @@ public class CalificacionService {
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
         Evaluacion evaluacion = buscarEvaluacion(idEvaluacion, idInstitucion);
 
-        // 2. A partir de la evaluacion se encuentra la asignacion docente
-        // para saber materia, paralelo, docente y gestion.
-        AsignacionDocente asignacion = buscarAsignacionActiva(evaluacion.getIdAsignacionDocente(), idInstitucion);
-        validarAccesoLectura(asignacion);
+        // 2. Validar acceso a la materia de esta evaluacion.
+        validarAccesoLecturaMateria(evaluacion.getIdMateria(), idInstitucion);
 
-        // 3. Se cargan solo estudiantes con inscripcion ACTIVA para ese paralelo y
+        // 3. Se busca la materia para contexto completo.
+        Materia materia = materiaRepository.findByIdAndIdInstitucion(evaluacion.getIdMateria(), idInstitucion)
+                .orElseThrow(() -> new EntityNotFoundException("Materia no encontrada: " + evaluacion.getIdMateria()));
+
+        // 4. Se necesitan las asignaciones de esta materia para obtener estudiantes.
+        // En este contexto, necesitamos identificar un paralelo/asignacion para cargar
+        // inscripciones.
+        // Para simplificar, se usa la primera asignacion disponible (todos tienen los
+        // mismos estudiantes por materia).
+        List<AsignacionDocente> asignacionesDeMateria = asignacionDocenteRepository
+                .findByIdMateriaAndIdInstitucionAndEstado(evaluacion.getIdMateria(), idInstitucion,
+                        ESTADO_ASIGNACION_ACTIVA);
+        if (asignacionesDeMateria.isEmpty()) {
+            throw new EntityNotFoundException("No hay asignaciones activas para esta materia");
+        }
+        AsignacionDocente asignacion = asignacionesDeMateria.get(0);
+
+        // 5. Se cargan solo estudiantes con inscripcion ACTIVA para ese paralelo y
         // gestion.
         List<Inscripcion> inscripciones = obtenerInscripcionesActivasDeAsignacion(idInstitucion, asignacion);
 
-        // 4. Se consultan las notas ya registradas de esta evaluacion y se convierten
+        // 6. Se consultan las notas ya registradas de esta evaluacion y se convierten
         // en un mapa por idInscripcion para encontrar rapidamente la nota de cada
         // estudiante.
         Map<UUID, Calificacion> calificacionesPorInscripcion = calificacionRepository
@@ -343,11 +359,11 @@ public class CalificacionService {
                 .stream()
                 .collect(Collectors.toMap(Calificacion::getIdInscripcion, Function.identity()));
 
-        // 5. Se une informacion de inscripcion + estudiante + calificacion existente.
+        // 7. Se une informacion de inscripcion + estudiante + calificacion existente.
         List<CalificacionEstudianteResponse> estudiantes = construirEstudiantesResponse(inscripciones,
                 calificacionesPorInscripcion);
 
-        // 6. Se arma la respuesta que consume Angular para dibujar la tabla de notas.
+        // 8. Se arma la respuesta que consume Angular para dibujar la tabla de notas.
         return CalificacionPlantillaResponse.builder()
                 .idEvaluacion(evaluacion.getId())
                 .evaluacion(EvaluacionResponse.from(evaluacion))
@@ -361,23 +377,31 @@ public class CalificacionService {
 
     @Transactional
     public CalificacionPlantillaResponse guardarCalificaciones(CalificacionRegistroRequest request) {
-        // 1. Se valida el contexto: institucion, evaluacion y asignacion.
+        // 1. Se valida el contexto: institucion, evaluacion y materia.
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
         Evaluacion evaluacion = buscarEvaluacion(request.getIdEvaluacion(), idInstitucion);
-        AsignacionDocente asignacion = buscarAsignacionActiva(evaluacion.getIdAsignacionDocente(), idInstitucion);
 
         // 2. Se valida permiso de escritura y que la evaluacion pueda modificarse.
         // Si esta CERRADA, solo un usuario con permiso especial puede editarla.
-        validarAccesoEscritura(asignacion);
+        validarAccesoEscrituraMateria(evaluacion.getIdMateria(), idInstitucion);
         validarEvaluacionEditable(evaluacion);
 
-        // 3. Se obtienen las inscripciones validas para impedir que el frontend
+        // 3. Se busca una asignacion de la materia para obtener el paralelo/gestion.
+        List<AsignacionDocente> asignacionesDeMateria = asignacionDocenteRepository
+                .findByIdMateriaAndIdInstitucionAndEstado(evaluacion.getIdMateria(), idInstitucion,
+                        ESTADO_ASIGNACION_ACTIVA);
+        if (asignacionesDeMateria.isEmpty()) {
+            throw new EntityNotFoundException("No hay asignaciones activas para esta materia");
+        }
+        AsignacionDocente asignacion = asignacionesDeMateria.get(0);
+
+        // 4. Se obtienen las inscripciones validas para impedir que el frontend
         // envie notas de estudiantes que no pertenecen al paralelo.
         List<Inscripcion> inscripciones = obtenerInscripcionesActivasDeAsignacion(idInstitucion, asignacion);
         Set<UUID> idsInscripcionesValidas = inscripciones.stream().map(Inscripcion::getId).collect(Collectors.toSet());
         Set<UUID> idsRecibidos = new HashSet<>();
 
-        // 4. Validacion previa de todos los detalles:
+        // 5. Validacion previa de todos los detalles:
         // - cada fila debe traer idInscripcion
         // - no se permiten inscripciones duplicadas
         // - todas deben pertenecer a la asignacion/evaluacion actual
@@ -394,12 +418,12 @@ public class CalificacionService {
             }
         }
 
-        // 5. Escala maxima institucional. Normalmente es 100, pero se toma
+        // 6. Escala maxima institucional. Normalmente es 100, pero se toma
         // de configuracion para respetar reglas de la institucion.
         BigDecimal maximo = escalaMaxima(idInstitucion);
         List<Calificacion> guardadas = new ArrayList<>();
 
-        // 6. Se procesa cada nota enviada por el frontend.
+        // 7. Se procesa cada nota enviada por el frontend.
         for (CalificacionDetalleRequest detalle : request.getDetalles()) {
             // 6.1. Normaliza la nota segun la escala de la evaluacion:
             // si es NUMERICA exige notaNumerica; si es LITERAL exige A/B/C/D/F.
@@ -455,12 +479,12 @@ public class CalificacionService {
             }
         }
 
-        // 7. Auditoria general de la operacion completa.
+        // 8. Auditoria general de la operacion completa.
         auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(), "CALIFICACIONES",
                 "GUARDAR_NOTAS", "evaluacion", evaluacion.getId().toString(), true,
                 "Calificaciones guardadas: " + guardadas.size());
 
-        // 8. Se devuelve la plantilla recargada para que el frontend vea los datos
+        // 9. Se devuelve la plantilla recargada para que el frontend vea los datos
         // actualizados.
         return obtenerPlantilla(evaluacion.getId());
     }
@@ -474,8 +498,10 @@ public class CalificacionService {
         validarPeriodo(idInstitucion, periodo);
 
         // 2. Se toman solo evaluaciones del periodo que no esten ANULADAS.
+        // Nota: Ahora las evaluaciones se filtran por idMateria, no por
+        // idAsignacionDocente.
         List<Evaluacion> evaluaciones = evaluacionRepository
-                .findAllByIdInstitucionAndIdAsignacionDocenteAndPeriodo(idInstitucion, idAsignacionDocente, periodo)
+                .findAllByIdInstitucionAndIdMateriaAndPeriodo(idInstitucion, asignacion.getIdMateria(), periodo)
                 .stream()
                 .filter(e -> !"ANULADA".equals(e.getEstado()))
                 .toList();
@@ -655,7 +681,8 @@ public class CalificacionService {
     }
 
     private void validarAccesoEscrituraMateria(UUID idMateria, UUID idInstitucion) {
-        // Escritura global: administradores o usuarios con permiso CALIFICACIONES_WRITE.
+        // Escritura global: administradores o usuarios con permiso
+        // CALIFICACIONES_WRITE.
         if (SecurityUtils.currentUserHasRole("ADMIN_INSTITUCION")
                 || SecurityUtils.currentUserHasRole("SUPER_ADMIN")
                 || SecurityUtils.currentUserHasAuthority("CALIFICACIONES_WRITE")) {
@@ -666,18 +693,20 @@ public class CalificacionService {
     }
 
     private void validarDocenteTieneMateria(UUID idMateria, UUID idInstitucion) {
-        // Verificar que el docente autenticado tiene al menos una asignación en esta materia.
+        // Verificar que el docente autenticado tiene al menos una asignación en esta
+        // materia.
         UUID idUsuario = SecurityUtils.currentUserId();
         Docente docente = docenteRepository.findByIdUsuarioAndIdInstitucion(idUsuario, idInstitucion)
                 .orElseThrow(() -> new AccessDeniedException("El usuario autenticado no tiene docente asociado"));
 
-        // Verificar que existe al menos una asignación activa del docente para esta materia.
+        // Verificar que existe al menos una asignación activa del docente para esta
+        // materia.
         boolean tieneMateria = asignacionDocenteRepository
                 .existsByIdDocenteAndIdMateriaAndEstado(docente.getId(), idMateria, ESTADO_ASIGNACION_ACTIVA);
 
         if (!tieneMateria) {
             throw new AccessDeniedException(
-                "No tienes asignación como docente para esta materia");
+                    "No tienes asignación como docente para esta materia");
         }
     }
 
@@ -717,27 +746,27 @@ public class CalificacionService {
         }
     }
 
-private void validarPonderacionTotal(UUID idInstitucion, UUID idMateria, Integer periodo,
+    private void validarPonderacionTotal(UUID idInstitucion, UUID idMateria, Integer periodo,
             BigDecimal ponderacionNueva, UUID idExcluir) {
         // Suma la ponderación de evaluaciones activas del período.
         // idExcluir se usa al editar para no contar dos veces la misma evaluación.
         BigDecimal acumulada = evaluacionRepository.sumPonderacionActiva(idInstitucion, idMateria, periodo,
                 idExcluir);
-        
+
         // Verifica si ya se alcanzó el 100% en el período
         if (acumulada.compareTo(BigDecimal.valueOf(100)) >= 0) {
             throw new IllegalStateException(
-                "Ya se ha utilizado el 100% de la ponderación en este período. " +
-                "Para agregar más evaluaciones, debes editar una existente y reducir su ponderación.");
+                    "Ya se ha utilizado el 100% de la ponderación en este período. " +
+                            "Para agregar más evaluaciones, debes editar una existente y reducir su ponderación.");
         }
-        
+
         // Verifica que la suma no supere el 100%
         BigDecimal suma = acumulada.add(ponderacionNueva);
         if (suma.compareTo(BigDecimal.valueOf(100)) > 0) {
             BigDecimal disponible = BigDecimal.valueOf(100).subtract(acumulada).setScale(2, RoundingMode.DOWN);
             throw new IllegalStateException(
-                "La ponderación ingresada supera el espacio disponible. " +
-                "Espacio disponible para este período: " + disponible + "%");
+                    "La ponderación ingresada supera el espacio disponible. " +
+                            "Espacio disponible para este período: " + disponible + "%");
         }
     }
 
