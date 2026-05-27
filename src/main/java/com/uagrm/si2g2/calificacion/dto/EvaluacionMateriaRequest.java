@@ -7,17 +7,14 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * DTO para crear una evaluación a nivel de MATERIA.
+ * DTO para crear una evaluación a nivel de materia.
  * 
- * IMPORTANTE: Cambio de diseño
- * - Anterior: idAsignacionDocente (vinculaba a docente+materia+paralelo)
- * - Ahora: idMateria (aplica a todos los estudiantes de la materia)
- * 
- * Esto permite que todos los paralelos de una materia compartan
- * la misma estructura de evaluaciones en el mismo período.
+ * Diferencias con EvaluacionRequest anterior:
+ * - idMateria en lugar de idAsignacionDocente
+ * - Aplica a TODOS los paralelos que enseñan esta materia en el período
  */
 @Data
-public class EvaluacionRequest {
+public class EvaluacionMateriaRequest {
 
     @NotNull
     private UUID idMateria;

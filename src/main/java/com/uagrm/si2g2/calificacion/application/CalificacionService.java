@@ -147,6 +147,36 @@ public class CalificacionService {
     }
 
     @Transactional(readOnly = true)
+    public List<EvaluacionResponse> listarEvaluacionesPorMateria(UUID idMateria, Integer periodo) {
+        // 1. Se obtiene la institución del usuario autenticado para mantener
+        // aislamiento multi-institución
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+
+        // 2. Validar que la materia existe y pertenece a la institución
+        if (!materiaRepository.existsByIdAndIdInstitucion(idMateria, idInstitucion)) {
+            throw new EntityNotFoundException("Materia no encontrada");
+        }
+
+        // 3. Verificar acceso: Un docente solo puede ver evaluaciones de materias que enseña.
+        // Un admin/director puede ver todas.
+        validarAccesoLecturaMateria(idMateria, idInstitucion);
+
+        // 4. Si el período llega null, se listan todas las evaluaciones de la materia.
+        // Si llega un período, se filtra solo ese período académico.
+        List<Evaluacion> evaluaciones = periodo == null
+                ? evaluacionRepository.findAllByIdInstitucionAndIdMateria(idInstitucion, idMateria)
+                : evaluacionRepository.findAllByIdInstitucionAndIdMateriaAndPeriodo(idInstitucion, idMateria, periodo);
+
+        // 5. Las entidades se ordenan y se convierten a DTO
+        return evaluaciones.stream()
+                .sorted(Comparator.comparing(Evaluacion::getPeriodo)
+                        .thenComparing(Evaluacion::getNombre))
+                .map(EvaluacionResponse::from)
+                .toList();
+    }
+
+    @Deprecated(forRemoval = true)
+    @Transactional(readOnly = true)
     public List<EvaluacionResponse> listarEvaluaciones(UUID idAsignacionDocente, Integer periodo) {
         // 1. Se obtiene la institucion del usuario autenticado para mantener
         // aislamiento multi-institucion: ningun usuario consulta datos de otra
@@ -166,9 +196,9 @@ public class CalificacionService {
         // asignacion.
         // Si llega un periodo, se filtra solo ese periodo academico.
         List<Evaluacion> evaluaciones = periodo == null
-                ? evaluacionRepository.findAllByIdInstitucionAndIdAsignacionDocente(idInstitucion, idAsignacionDocente)
-                : evaluacionRepository.findAllByIdInstitucionAndIdAsignacionDocenteAndPeriodo(idInstitucion,
-                        idAsignacionDocente, periodo);
+                ? evaluacionRepository.findAllByIdInstitucionAndIdMateria(idInstitucion, asignacion.getIdMateria())
+                : evaluacionRepository.findAllByIdInstitucionAndIdMateriaAndPeriodo(idInstitucion,
+                        asignacion.getIdMateria(), periodo);
 
         // 5. Las entidades se ordenan y se convierten a DTO para no exponer
         // directamente la estructura interna de la base de datos.
@@ -181,42 +211,44 @@ public class CalificacionService {
 
     @Transactional
     public EvaluacionResponse crearEvaluacion(EvaluacionRequest request) {
-        // 1. Contexto base: institucion actual y asignacion donde se creara la
-        // evaluacion.
+        // 1. Contexto base: institución actual
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
-        AsignacionDocente asignacion = buscarAsignacionActiva(request.getIdAsignacionDocente(), idInstitucion);
+        
+        // 2. Validar que la materia existe
+        if (!materiaRepository.existsByIdAndIdInstitucion(request.getIdMateria(), idInstitucion)) {
+            throw new EntityNotFoundException("Materia no encontrada");
+        }
 
-        // 2. Solo usuarios autorizados pueden crear evaluaciones.
-        // Para docentes, ademas se valida que sean propietarios de la asignacion.
-        validarAccesoEscritura(asignacion);
+        // 3. Validar permisos: Solo docentes de esta materia o administradores pueden crear evaluaciones
+        validarAccesoEscrituraMateria(request.getIdMateria(), idInstitucion);
 
-        // 3. El periodo debe existir segun la configuracion institucional.
-        // Ejemplo: si la institucion tiene 4 periodos, no permite periodo 5.
+        // 4. El periodo debe existir según la configuración institucional.
+        // Ejemplo: si la institución tiene 4 períodos, no permite período 5.
         validarPeriodo(idInstitucion, request.getPeriodo());
 
-        // 4. Se limpian y validan los datos recibidos antes de guardar:
-        // nombre/tipo obligatorios, escala valida y ponderacion entre 0.01 y 100.
-        String nombre = normalizarTexto(request.getNombre(), "El nombre de la evaluacion es obligatorio");
-        String tipo = normalizarTexto(request.getTipo(), "El tipo de evaluacion es obligatorio");
+        // 5. Se limpian y validan los datos recibidos antes de guardar:
+        // nombre/tipo obligatorios, escala válida y ponderación entre 0.01 y 100.
+        String nombre = normalizarTexto(request.getNombre(), "El nombre de la evaluación es obligatorio");
+        String tipo = normalizarTexto(request.getTipo(), "El tipo de evaluación es obligatorio");
         String escala = normalizarEscala(request.getEscala());
         BigDecimal ponderacion = normalizarPonderacion(request.getPonderacion());
 
-        // 5. Regla de negocio: en una misma asignacion y periodo no puede haber
+        // 6. Regla de negocio: en una misma materia y período no puede haber
         // dos evaluaciones con el mismo nombre.
-        if (evaluacionRepository.existsByIdInstitucionAndIdAsignacionDocenteAndPeriodoAndNombreIgnoreCase(
-                idInstitucion, asignacion.getId(), request.getPeriodo(), nombre)) {
-            throw new IllegalStateException("Ya existe una evaluacion con ese nombre en el periodo seleccionado");
+        if (evaluacionRepository.existsByIdInstitucionAndIdMateriaAndPeriodoAndNombreIgnoreCase(
+                idInstitucion, request.getIdMateria(), request.getPeriodo(), nombre)) {
+            throw new IllegalStateException("Ya existe una evaluación con ese nombre en el período seleccionado");
         }
 
-        // 6. Regla de negocio: la suma de ponderaciones activas del periodo
+        // 7. Regla de negocio: la suma de ponderaciones activas del período
         // no puede superar el 100%.
-        validarPonderacionTotal(idInstitucion, asignacion.getId(), request.getPeriodo(), ponderacion, null);
+        validarPonderacionTotal(idInstitucion, request.getIdMateria(), request.getPeriodo(), ponderacion, null);
 
-        // 7. Se arma la entidad Evaluacion. Aunque el request traiga otro estado,
+        // 8. Se arma la entidad Evaluación. Aunque el request traiga otro estado,
         // al crear siempre inicia en ABIERTA para permitir registrar notas.
         Evaluacion evaluacion = Evaluacion.builder()
                 .idInstitucion(idInstitucion)
-                .idAsignacionDocente(asignacion.getId())
+                .idMateria(request.getIdMateria())
                 .creadoPor(SecurityUtils.currentUserId())
                 .periodo(request.getPeriodo())
                 .tipo(tipo)
@@ -226,14 +258,14 @@ public class CalificacionService {
                 .estado("ABIERTA")
                 .build();
 
-        // 8. Se persiste en base de datos y luego se registra auditoria general
-        // para dejar trazabilidad de quien creo la evaluacion.
+        // 9. Se persiste en base de datos y luego se registra auditoría general
+        // para dejar trazabilidad de quién creó la evaluación.
         Evaluacion saved = evaluacionRepository.save(evaluacion);
         auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(), "CALIFICACIONES",
                 "CREAR_EVALUACION", "evaluacion", saved.getId().toString(), true,
-                "Evaluacion creada");
+                "Evaluación creada");
 
-        // 9. Se devuelve un DTO de respuesta para el frontend.
+        // 10. Se devuelve un DTO de respuesta para el frontend.
         return EvaluacionResponse.from(saved);
     }
 
@@ -610,6 +642,45 @@ public class CalificacionService {
         }
     }
 
+    private void validarAccesoLecturaMateria(UUID idMateria, UUID idInstitucion) {
+        // Roles administrativos o permiso global pueden leer todas las materias.
+        if (SecurityUtils.currentUserHasRole("ADMIN_INSTITUCION")
+                || SecurityUtils.currentUserHasRole("SUPER_ADMIN")
+                || SecurityUtils.currentUserHasRole("DIRECTOR")
+                || SecurityUtils.currentUserHasAuthority("CALIFICACIONES_READ_ALL")) {
+            return;
+        }
+        // Si no es administrativo, debe tener al menos una asignación en esa materia.
+        validarDocenteTieneMateria(idMateria, idInstitucion);
+    }
+
+    private void validarAccesoEscrituraMateria(UUID idMateria, UUID idInstitucion) {
+        // Escritura global: administradores o usuarios con permiso CALIFICACIONES_WRITE.
+        if (SecurityUtils.currentUserHasRole("ADMIN_INSTITUCION")
+                || SecurityUtils.currentUserHasRole("SUPER_ADMIN")
+                || SecurityUtils.currentUserHasAuthority("CALIFICACIONES_WRITE")) {
+            return;
+        }
+        // Si no tiene escritura global, debe tener asignación en esa materia.
+        validarDocenteTieneMateria(idMateria, idInstitucion);
+    }
+
+    private void validarDocenteTieneMateria(UUID idMateria, UUID idInstitucion) {
+        // Verificar que el docente autenticado tiene al menos una asignación en esta materia.
+        UUID idUsuario = SecurityUtils.currentUserId();
+        Docente docente = docenteRepository.findByIdUsuarioAndIdInstitucion(idUsuario, idInstitucion)
+                .orElseThrow(() -> new AccessDeniedException("El usuario autenticado no tiene docente asociado"));
+
+        // Verificar que existe al menos una asignación activa del docente para esta materia.
+        boolean tieneMateria = asignacionDocenteRepository
+                .existsByIdDocenteAndIdMateriaAndEstado(docente.getId(), idMateria, ESTADO_ASIGNACION_ACTIVA);
+
+        if (!tieneMateria) {
+            throw new AccessDeniedException(
+                "No tienes asignación como docente para esta materia");
+        }
+    }
+
     private void validarEvaluacionEditable(Evaluacion evaluacion) {
         // Caso normal: una evaluacion ABIERTA puede modificarse.
         if ("ABIERTA".equals(evaluacion.getEstado())) {
@@ -646,27 +717,27 @@ public class CalificacionService {
         }
     }
 
-    private void validarPonderacionTotal(UUID idInstitucion, UUID idAsignacionDocente, Integer periodo,
+private void validarPonderacionTotal(UUID idInstitucion, UUID idMateria, Integer periodo,
             BigDecimal ponderacionNueva, UUID idExcluir) {
-        // Suma la ponderacion de evaluaciones activas del periodo.
-        // idExcluir se usa al editar para no contar dos veces la misma evaluacion.
-        BigDecimal acumulada = evaluacionRepository.sumPonderacionActiva(idInstitucion, idAsignacionDocente, periodo,
+        // Suma la ponderación de evaluaciones activas del período.
+        // idExcluir se usa al editar para no contar dos veces la misma evaluación.
+        BigDecimal acumulada = evaluacionRepository.sumPonderacionActiva(idInstitucion, idMateria, periodo,
                 idExcluir);
-
-        // Verifica si ya se alcanzó el 100% en el periodo
+        
+        // Verifica si ya se alcanzó el 100% en el período
         if (acumulada.compareTo(BigDecimal.valueOf(100)) >= 0) {
             throw new IllegalStateException(
-                    "Ya se ha utilizado el 100% de la ponderacion en este periodo. " +
-                            "Para agregar más evaluaciones, debes editar una existente y reducir su ponderacion.");
+                "Ya se ha utilizado el 100% de la ponderación en este período. " +
+                "Para agregar más evaluaciones, debes editar una existente y reducir su ponderación.");
         }
-
+        
         // Verifica que la suma no supere el 100%
         BigDecimal suma = acumulada.add(ponderacionNueva);
         if (suma.compareTo(BigDecimal.valueOf(100)) > 0) {
             BigDecimal disponible = BigDecimal.valueOf(100).subtract(acumulada).setScale(2, RoundingMode.DOWN);
             throw new IllegalStateException(
-                    "La ponderacion ingresada supera el espacio disponible. " +
-                            "Espacio disponible para este periodo: " + disponible + "%");
+                "La ponderación ingresada supera el espacio disponible. " +
+                "Espacio disponible para este período: " + disponible + "%");
         }
     }
 

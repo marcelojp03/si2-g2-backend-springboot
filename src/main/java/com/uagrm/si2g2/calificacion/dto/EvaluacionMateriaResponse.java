@@ -1,6 +1,6 @@
 package com.uagrm.si2g2.calificacion.dto;
 
-import com.uagrm.si2g2.calificacion.domain.Evaluacion;
+import com.uagrm.si2g2.calificacion.domain.EvaluacionMateria;
 import lombok.Builder;
 import lombok.Value;
 
@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Value
 @Builder
-public class EvaluacionResponse {
+public class EvaluacionMateriaResponse {
     UUID id;
     UUID idInstitucion;
     UUID idMateria;
@@ -24,8 +24,8 @@ public class EvaluacionResponse {
     Instant creadoEn;
     Instant actualizadoEn;
 
-    public static EvaluacionResponse from(Evaluacion evaluacion) {
-        return EvaluacionResponse.builder()
+    public static EvaluacionMateriaResponse from(EvaluacionMateria evaluacion) {
+        return EvaluacionMateriaResponse.builder()
                 .id(evaluacion.getId())
                 .idInstitucion(evaluacion.getIdInstitucion())
                 .idMateria(evaluacion.getIdMateria())

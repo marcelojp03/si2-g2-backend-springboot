@@ -80,10 +80,10 @@ public class CalificacionController {
     @GetMapping("/evaluaciones")
     @PreAuthorize("hasAnyAuthority('CALIFICACIONES_READ','CALIFICACIONES_WRITE','CALIFICACIONES_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<List<EvaluacionResponse>>> listarEvaluaciones(
-            @RequestParam UUID idAsignacionDocente,
+            @RequestParam UUID idMateria,
             @RequestParam(required = false) Integer periodo) {
         return ResponseEntity
-                .ok(ApiResponse.ok("Evaluaciones", service.listarEvaluaciones(idAsignacionDocente, periodo)));
+                .ok(ApiResponse.ok("Evaluaciones", service.listarEvaluacionesPorMateria(idMateria, periodo)));
     }
 
     /**

@@ -9,13 +9,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface EvaluacionRepository extends JpaRepository<Evaluacion, UUID> {
+public interface EvaluacionMateriaRepository extends JpaRepository<EvaluacionMateria, UUID> {
 
-    Optional<Evaluacion> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
+    Optional<EvaluacionMateria> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
 
-    List<Evaluacion> findAllByIdInstitucionAndIdMateria(UUID idInstitucion, UUID idMateria);
+    List<EvaluacionMateria> findAllByIdInstitucionAndIdMateria(UUID idInstitucion, UUID idMateria);
 
-    List<Evaluacion> findAllByIdInstitucionAndIdMateriaAndPeriodo(
+    List<EvaluacionMateria> findAllByIdInstitucionAndIdMateriaAndPeriodo(
             UUID idInstitucion,
             UUID idMateria,
             Integer periodo
@@ -30,7 +30,7 @@ public interface EvaluacionRepository extends JpaRepository<Evaluacion, UUID> {
 
     @Query("""
             select coalesce(sum(e.ponderacion), 0)
-            from Evaluacion e
+            from EvaluacionMateria e
             where e.idInstitucion = :idInstitucion
               and e.idMateria = :idMateria
               and e.periodo = :periodo
