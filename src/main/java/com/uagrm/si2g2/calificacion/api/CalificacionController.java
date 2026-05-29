@@ -3,6 +3,7 @@ package com.uagrm.si2g2.calificacion.api;
 import com.uagrm.si2g2.auditoria.dto.BitacoraAuditoriaResponse;
 import com.uagrm.si2g2.calificacion.application.CalificacionTrimestralService;
 import com.uagrm.si2g2.calificacion.application.CalificacionService;
+import com.uagrm.si2g2.calificacion.domain.PeriodoTrimestral;
 import com.uagrm.si2g2.calificacion.dto.*;
 import com.uagrm.si2g2.common.dto.ApiResponse;
 import jakarta.validation.Valid;

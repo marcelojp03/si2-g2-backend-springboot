@@ -16,6 +16,9 @@ public interface ActividadEvaluativaRepository extends JpaRepository<ActividadEv
     List<ActividadEvaluativa> findAllByIdInstitucionAndIdPeriodoTrimestralAndIdMateriaAndIdCursoAndIdParalelo(
             UUID idInstitucion, UUID idPeriodoTrimestral, UUID idMateria, UUID idCurso, UUID idParalelo);
 
+    List<ActividadEvaluativa> findAllByIdInstitucionAndIdPeriodoTrimestralAndIdMateriaAndIdParalelo(
+            UUID idInstitucion, UUID idPeriodoTrimestral, UUID idMateria, UUID idParalelo);
+
     boolean existsByIdInstitucionAndIdPeriodoTrimestralAndNombreActividadIgnoreCase(
             UUID idInstitucion, UUID idPeriodoTrimestral, String nombreActividad);
 }
