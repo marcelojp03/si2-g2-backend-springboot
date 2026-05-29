@@ -39,7 +39,7 @@ public class AsistenciaController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ASISTENCIA_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('ASISTENCIA_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<AsistenciaRegistroResponse>> guardar(
             @Valid @RequestBody AsistenciaRegistroRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)

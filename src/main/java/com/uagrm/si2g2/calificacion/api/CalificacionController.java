@@ -110,7 +110,7 @@ public class CalificacionController {
      * @return Evaluación creada con ID asignado
      */
     @PostMapping("/evaluaciones")
-    @PreAuthorize("hasAnyAuthority('CALIFICACIONES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('CALIFICACIONES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<EvaluacionResponse>> crearEvaluacion(
             @Valid @RequestBody EvaluacionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -131,7 +131,7 @@ public class CalificacionController {
      * @return Evaluación actualizada
      */
     @PutMapping("/evaluaciones/{id}")
-    @PreAuthorize("hasAnyAuthority('CALIFICACIONES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('CALIFICACIONES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<EvaluacionResponse>> actualizarEvaluacion(
             @PathVariable UUID id,
             @Valid @RequestBody EvaluacionRequest request) {
@@ -177,7 +177,7 @@ public class CalificacionController {
      * @return Plantilla actualizada después de guardar
      */
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('CALIFICACIONES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('CALIFICACIONES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<CalificacionPlantillaResponse>> guardarCalificaciones(
             @Valid @RequestBody CalificacionRegistroRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)

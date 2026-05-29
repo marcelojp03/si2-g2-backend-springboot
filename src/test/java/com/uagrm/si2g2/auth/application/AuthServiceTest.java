@@ -10,6 +10,7 @@ import com.uagrm.si2g2.auth.dto.PasswordRecoveryRequest;
 import com.uagrm.si2g2.auth.dto.PasswordRecoveryResponse;
 import com.uagrm.si2g2.auth.dto.RegisterRequest;
 import com.uagrm.si2g2.config.AppProperties;
+import com.uagrm.si2g2.persona.application.PersonaProvisioningService;
 import com.uagrm.si2g2.security.JwtService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,6 +58,9 @@ class AuthServiceTest {
     @Mock
     private RoleService roleService;
 
+    @Mock
+    private PersonaProvisioningService personaProvisioningService;
+
     private AuthService authService;
 
     private AppProperties appProperties;
@@ -88,6 +92,7 @@ class AuthServiceTest {
                 authenticationManager,
                 auditoriaService,
                 roleService,
+                personaProvisioningService,
                 appProperties
         );
     }

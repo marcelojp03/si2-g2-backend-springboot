@@ -48,7 +48,7 @@ public class DocenteController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
         service.eliminar(id);
         return ResponseEntity.ok(ApiResponse.ok("Docente desactivado", null));

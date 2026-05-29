@@ -22,7 +22,7 @@ public class GestionAcademicaController {
     private final GestionAcademicaService service;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
     public ResponseEntity<ApiResponse<GestionAcademicaResponse>> crear(
             @Valid @RequestBody GestionAcademicaRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -42,7 +42,7 @@ public class GestionAcademicaController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
     public ResponseEntity<ApiResponse<GestionAcademicaResponse>> actualizar(
             @PathVariable UUID id,
             @Valid @RequestBody GestionAcademicaRequest request) {
@@ -50,7 +50,7 @@ public class GestionAcademicaController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
         service.eliminar(id);
         return ResponseEntity.ok(ApiResponse.ok("Gestión académica anulada", null));

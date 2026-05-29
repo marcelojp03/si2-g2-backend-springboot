@@ -653,6 +653,7 @@ public class CalificacionService {
         // CALIFICACIONES_WRITE.
         if (SecurityUtils.currentUserHasRole("ADMIN_INSTITUCION")
                 || SecurityUtils.currentUserHasRole("SUPER_ADMIN")
+                || SecurityUtils.currentUserHasRole("DIRECTOR")
                 || SecurityUtils.currentUserHasAuthority("CALIFICACIONES_WRITE")) {
             return;
         }
@@ -691,6 +692,7 @@ public class CalificacionService {
         // CALIFICACIONES_WRITE.
         if (SecurityUtils.currentUserHasRole("ADMIN_INSTITUCION")
                 || SecurityUtils.currentUserHasRole("SUPER_ADMIN")
+                || SecurityUtils.currentUserHasRole("DIRECTOR")
                 || SecurityUtils.currentUserHasAuthority("CALIFICACIONES_WRITE")) {
             return;
         }
