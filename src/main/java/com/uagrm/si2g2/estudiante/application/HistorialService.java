@@ -123,7 +123,7 @@ public class HistorialService {
         String nombreMateria = materia != null ? materia.getNombre() : "—";
 
         List<Evaluacion> evaluaciones = evaluacionRepository
-                .findAllByIdInstitucionAndIdAsignacionDocente(idInstitucion, asignacion.getId());
+                .findAllByIdInstitucionAndIdMateria(idInstitucion, asignacion.getIdMateria());
 
         List<UUID> idsEvaluacion = evaluaciones.stream().map(Evaluacion::getId).toList();
         List<Calificacion> calificaciones = calificacionRepository.findAllByIdEvaluacionIn(idsEvaluacion)
