@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  * - Crear evaluaciones (parcial, examen, trabajo, proyecto, participación)
  * - Actualizar evaluaciones (cambiar nombre, tipo, ponderación, estado)
  * - Validar ponderación total no supere 100%
- * - Listar evaluaciones por asignación/período
+ * - Listar evaluaciones por materia/período
  * 
  * 2. CALIFICACIONES:
  * - Registrar notas nuevas (numéricas o literales)
@@ -54,8 +54,8 @@ import java.util.stream.Collectors;
  * - Calcular notas consolidadas y estado académico
  * 
  * 3. SEGURIDAD:
- * - Validación de acceso: docente solo ve sus asignaciones
- * - Administradores pueden ver todas las asignaciones
+ * - Validación de acceso: docente solo ve sus materias asignadas
+ * - Administradores pueden ver todas las materias
  * - Restricción de edición cuando evaluación está CERRADA
  * - Auditoría completa de cambios en CalificacionCambio
  * 
@@ -112,7 +112,8 @@ public class CalificacionService {
      * 4. Filtra solo asignaciones en estado ACTIVA
      * 
      * CASOS DE USO:
-     * - Cargar combo/dropdown de "Selecciona materia/grupo"
+     * - Cargar el punto de entrada del módulo en la UI
+     * - Seleccionar la materia a la que pertenecen las evaluaciones
      * - Verificar a qué paralelos tiene acceso el docente
      * 
      * @return Lista de asignaciones con info de materia, curso, paralelo, docente
@@ -148,6 +149,8 @@ public class CalificacionService {
 
     @Transactional(readOnly = true)
     public List<EvaluacionResponse> listarEvaluacionesPorMateria(UUID idMateria, Integer periodo) {
+        // La materia es el nuevo eje de negocio: todos los paralelos comparten
+        // la misma estructura de evaluaciones para el mismo período.
         // 1. Se obtiene la institución del usuario autenticado para mantener
         // aislamiento multi-institución
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
@@ -179,6 +182,8 @@ public class CalificacionService {
     @Deprecated(forRemoval = true)
     @Transactional(readOnly = true)
     public List<EvaluacionResponse> listarEvaluaciones(UUID idAsignacionDocente, Integer periodo) {
+        // Compatibilidad temporal: este método conserva la firma antigua, pero
+        // resuelve las evaluaciones por materia para no romper integraciones viejas.
         // 1. Se obtiene la institucion del usuario autenticado para mantener
         // aislamiento multi-institucion: ningun usuario consulta datos de otra
         // institucion.
@@ -215,7 +220,8 @@ public class CalificacionService {
         // 1. Contexto base: institución actual
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
 
-        // 2. Validar que la materia existe
+        // 2. Validar que la materia existe. Ya no se guarda una evaluación por
+        // asignación docente, sino por materia.
         if (!materiaRepository.existsByIdAndIdInstitucion(request.getIdMateria(), idInstitucion)) {
             throw new EntityNotFoundException("Materia no encontrada");
         }
@@ -335,10 +341,9 @@ public class CalificacionService {
                 .orElseThrow(() -> new EntityNotFoundException("Materia no encontrada: " + evaluacion.getIdMateria()));
 
         // 4. Se necesitan las asignaciones de esta materia para obtener estudiantes.
-        // En este contexto, necesitamos identificar un paralelo/asignacion para cargar
-        // inscripciones.
-        // Para simplificar, se usa la primera asignacion disponible (todos tienen los
-        // mismos estudiantes por materia).
+        // Aunque la evaluación ya no depende de la asignación, las inscripciones
+        // siguen viviendo por paralelo, así que se toma una asignación activa para
+        // ubicar ese grupo.
         List<AsignacionDocente> asignacionesDeMateria = asignacionDocenteRepository
                 .findByIdMateriaAndIdInstitucionAndEstado(evaluacion.getIdMateria(), idInstitucion,
                         ESTADO_ASIGNACION_ACTIVA);
@@ -387,6 +392,7 @@ public class CalificacionService {
         validarEvaluacionEditable(evaluacion);
 
         // 3. Se busca una asignacion de la materia para obtener el paralelo/gestion.
+        // Se toma una asignación activa solo para localizar el grupo de inscripciones.
         List<AsignacionDocente> asignacionesDeMateria = asignacionDocenteRepository
                 .findByIdMateriaAndIdInstitucionAndEstado(evaluacion.getIdMateria(), idInstitucion,
                         ESTADO_ASIGNACION_ACTIVA);
@@ -498,8 +504,8 @@ public class CalificacionService {
         validarPeriodo(idInstitucion, periodo);
 
         // 2. Se toman solo evaluaciones del periodo que no esten ANULADAS.
-        // Nota: Ahora las evaluaciones se filtran por idMateria, no por
-        // idAsignacionDocente.
+        // Nota: ahora la consulta principal es por idMateria; idAsignacionDocente
+        // se conserva solo como entrada del resumen para derivar la materia.
         List<Evaluacion> evaluaciones = evaluacionRepository
                 .findAllByIdInstitucionAndIdMateriaAndPeriodo(idInstitucion, asignacion.getIdMateria(), periodo)
                 .stream()
