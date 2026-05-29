@@ -321,6 +321,23 @@ public class CalificacionService {
         return EvaluacionResponse.from(saved);
     }
 
+    @Transactional
+    public void eliminarEvaluacion(UUID id) {
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        Evaluacion evaluacion = buscarEvaluacion(id, idInstitucion);
+        validarAccesoEscrituraMateria(evaluacion.getIdMateria(), idInstitucion);
+
+        boolean tieneCalificaciones = !calificacionRepository.findAllByIdEvaluacion(id).isEmpty();
+        if (tieneCalificaciones) {
+            throw new IllegalStateException(
+                "No se puede eliminar una evaluacion que ya tiene calificaciones registradas. Cambia su estado a ANULADA.");
+        }
+
+        auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(), "CALIFICACIONES",
+                "ELIMINAR_EVALUACION", "evaluacion", id.toString(), true, "Evaluacion eliminada");
+        evaluacionRepository.deleteById(id);
+    }
+
     @Transactional(readOnly = true)
     public CalificacionPlantillaResponse obtenerPlantilla(UUID idEvaluacion) {
         // 1. Se identifica la institucion y se busca la evaluacion seleccionada.

@@ -132,6 +132,22 @@ public class CalificacionController {
     }
 
     /**
+     * DELETE /api/calificaciones/evaluaciones/{id}
+     * 
+     * Elimina una evaluación. Solo se permite si no tiene calificaciones registradas.
+     * Si ya tiene notas, cambia su estado a ANULADA mediante el endpoint PUT.
+     *
+     * @param id UUID de la evaluación a eliminar
+     * @return Mensaje de confirmación
+     */
+    @DeleteMapping("/evaluaciones/{id}")
+    @PreAuthorize("hasAnyAuthority('CALIFICACIONES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DOCENTE')")
+    public ResponseEntity<ApiResponse<Void>> eliminarEvaluacion(@PathVariable UUID id) {
+        service.eliminarEvaluacion(id);
+        return ResponseEntity.ok(ApiResponse.ok("Evaluacion eliminada", null));
+    }
+
+    /**
      * GET /api/calificaciones/plantilla
      * 
      * Obtiene la plantilla de calificaciones para una evaluación específica.
