@@ -2,6 +2,7 @@ package com.uagrm.si2g2.materia.domain;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -9,6 +10,8 @@ import java.util.UUID;
 public interface MateriaRepository extends JpaRepository<Materia, UUID> {
 
     List<Materia> findAllByIdInstitucion(UUID idInstitucion);
+
+    List<Materia> findAllByIdInAndIdInstitucionAndEstado(Collection<UUID> ids, UUID idInstitucion, String estado);
 
     Optional<Materia> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
 

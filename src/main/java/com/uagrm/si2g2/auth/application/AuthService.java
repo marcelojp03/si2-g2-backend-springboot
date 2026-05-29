@@ -16,6 +16,7 @@ import com.uagrm.si2g2.auth.dto.RegisterRequest;
 import com.uagrm.si2g2.auditoria.application.AuditoriaService;
 import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.config.AppProperties;
+import com.uagrm.si2g2.persona.application.PersonaProvisioningService;
 import com.uagrm.si2g2.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +49,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final AuditoriaService auditoriaService;
     private final RoleService roleService;
+    private final PersonaProvisioningService personaProvisioningService;
     private final AppProperties appProperties;
 
     @Transactional
@@ -58,9 +60,13 @@ public class AuthService {
         }
 
         UUID idInstitucion = resolveTargetInstitutionId(request);
+        if (request.getIdRol() == null && (request.getCodigoRol() == null || request.getCodigoRol().isBlank())) {
+            throw new IllegalArgumentException("Debes seleccionar un rol para el nuevo usuario");
+        }
+
         String codigoRol = (request.getCodigoRol() != null && !request.getCodigoRol().isBlank())
                 ? request.getCodigoRol()
-                : "ADMIN_INSTITUCION";
+                : null;
 
         Rol rol = roleService.resolveAssignableRole(request.getIdRol(), codigoRol);
 
@@ -74,7 +80,8 @@ public class AuthService {
                 .build();
 
         usuarioRepository.save(usuario);
-        log.info("Register exitoso: correo={}, rol={}", usuario.getCorreo(), codigoRol);
+        personaProvisioningService.provisionForUsuario(usuario);
+        log.info("Register exitoso: correo={}, rol={}", usuario.getCorreo(), rol.getCodigo());
         auditoriaService.registrar(usuario.getIdInstitucion(), usuario.getId(),
                 "AUTH", "REGISTER", "usuario", usuario.getId().toString(),
                 true, "Rol asignado: " + rol.getCodigo());

@@ -76,7 +76,7 @@ public class InstitucionController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_INSTITUCION')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_INSTITUCION','DIRECTOR')")
     public ResponseEntity<ApiResponse<InstitucionResponse>> actualizar(
             @PathVariable UUID id,
             @Valid @RequestBody InstitucionRequest request) {
@@ -93,7 +93,7 @@ public class InstitucionController {
     }
 
     @PutMapping("/{id}/configuraciones")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_INSTITUCION')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_INSTITUCION','DIRECTOR')")
     public ResponseEntity<ApiResponse<ConfiguracionInstitucionResponse>> guardarConfiguracion(
             @PathVariable UUID id,
             @Valid @RequestBody ConfiguracionInstitucionRequest request) {

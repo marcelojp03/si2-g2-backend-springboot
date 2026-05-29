@@ -369,6 +369,7 @@ public class AsistenciaService {
     private void validarAccesoEscritura(AsignacionDocente asignacion) {
         if (SecurityUtils.currentUserHasRole("ADMIN_INSTITUCION")
                 || SecurityUtils.currentUserHasRole("SUPER_ADMIN")
+                || SecurityUtils.currentUserHasRole("DIRECTOR")
                 || SecurityUtils.currentUserHasAuthority("ASISTENCIA_WRITE")) {
             return;
         }

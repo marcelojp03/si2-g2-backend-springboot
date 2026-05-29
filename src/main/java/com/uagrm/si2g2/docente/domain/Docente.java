@@ -1,9 +1,12 @@
 package com.uagrm.si2g2.docente.domain;
 
 import com.uagrm.si2g2.common.entity.BaseEntity;
+import com.uagrm.si2g2.materia.domain.Materia;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -45,8 +48,18 @@ public class Docente extends BaseEntity {
     @Column(name = "correo", length = 150)
     private String correo;
 
+    /** Resumen legible; se sincroniza con los nombres de {@link #materias}. */
     @Column(name = "especialidad", length = 150)
     private String especialidad;
+
+    @Builder.Default
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "docente_materia",
+            joinColumns = @JoinColumn(name = "id_docente"),
+            inverseJoinColumns = @JoinColumn(name = "id_materia")
+    )
+    private Set<Materia> materias = new HashSet<>();
 
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 15)

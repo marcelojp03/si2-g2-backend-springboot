@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.util.List;
+import java.util.UUID;
+
 @Data
 public class DocenteRequest {
 
@@ -32,6 +35,6 @@ public class DocenteRequest {
     @Size(max = 150)
     private String correo;
 
-    @Size(max = 150)
-    private String especialidad;
+    /** Materias de especialidad (deben existir en la institución). */
+    private List<UUID> idsMateria;
 }

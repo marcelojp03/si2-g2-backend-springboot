@@ -1,0 +1,699 @@
+{
+  "info": {
+    "_postman_id": "sprint2-operacion-academica-si2-g2",
+    "name": "SI2-G2 Sprint 2 - Operacion Academica",
+    "description": "Pruebas API para HU-S2-14 a HU-S2-19.\n\nRequisitos:\n1. Backend en http://localhost:2026\n2. Ejecutar seed: POST /api/seed/synthetic (SUPER_ADMIN)\n3. Migraciones Sprint 2 aplicadas (horarios, asistencia, evaluaciones)\n\nUsuarios demo (password: Demo12345!):\n- director.demo@si2.test\n- docente.mate.demo@si2.test\n- estudiante.lucia.demo@si2.test\n- tutor.maria.demo@si2.test\n- admin.demo@si2.test",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:2026" },
+    { "key": "token", "value": "" },
+    { "key": "idAula", "value": "" },
+    { "key": "idHorario", "value": "" },
+    { "key": "idInstitucion", "value": "" },
+    { "key": "idAsignacionDocente", "value": "" },
+    { "key": "idAsistencia", "value": "" },
+    { "key": "idEvaluacion", "value": "" },
+    { "key": "idMateria", "value": "" },
+    { "key": "idEstudiante", "value": "" },
+    { "key": "fechaHoy", "value": "2026-05-29" }
+  ],
+  "item": [
+    {
+      "name": "00 - Setup",
+      "item": [
+        {
+          "name": "Login SUPER_ADMIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Login OK', () => pm.response.to.have.status(200));",
+                  "if (json.data && json.data.token) {",
+                  "  pm.collectionVariables.set('token', json.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"superadmin@example.com\",\n  \"contrasena\": \"change_me_super_admin\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "POST Seed synthetic",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/seed/synthetic"
+          }
+        },
+        {
+          "name": "Login DIRECTOR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Login OK', () => pm.response.to.have.status(200));",
+                  "if (json.data && json.data.token) pm.collectionVariables.set('token', json.data.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"director.demo@si2.test\",\n  \"contrasena\": \"Demo12345!\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "GET Asignaciones (obtener IDs)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Asignaciones OK', () => pm.response.to.have.status(200));",
+                  "if (json.data && json.data.length) {",
+                  "  pm.collectionVariables.set('idAsignacionDocente', json.data[0].id);",
+                  "  pm.collectionVariables.set('idInstitucion', json.data[0].idInstitucion);",
+                  "  if (json.data[0].idMateria) pm.collectionVariables.set('idMateria', json.data[0].idMateria);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/asignaciones"
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-S2-14 Gestionar aulas",
+      "item": [
+        {
+          "name": "POST Crear aula",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('idAula', pm.response.json().data.id);",
+                  "}",
+                  "pm.test('Crear o conflicto codigo duplicado', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"A-TEST-99\",\n  \"nombre\": \"Aula Postman Test\",\n  \"capacidad\": 35,\n  \"ubicacion\": \"Edificio B piso 2\",\n  \"recursos\": [\"pizarra\", \"proyector\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/aulas"
+          }
+        },
+        {
+          "name": "GET Listar aulas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/aulas"
+          }
+        },
+        {
+          "name": "GET Filtrar por capacidad y recurso",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/aulas?capacidadMin=30&recurso=proyector&estado=ACTIVO",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "aulas"],
+              "query": [
+                { "key": "capacidadMin", "value": "30" },
+                { "key": "recurso", "value": "proyector" },
+                { "key": "estado", "value": "ACTIVO" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Obtener aula por ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/aulas/{{idAula}}"
+          }
+        },
+        {
+          "name": "PUT Actualizar aula",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"A-TEST-99\",\n  \"nombre\": \"Aula Postman Actualizada\",\n  \"capacidad\": 40,\n  \"ubicacion\": \"Edificio B piso 3\",\n  \"recursos\": [\"pizarra\", \"proyector\", \"aire\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/aulas/{{idAula}}"
+          }
+        },
+        {
+          "name": "DELETE Desactivar aula (sin horarios activos)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/aulas/{{idAula}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-S2-15 Gestionar horarios",
+      "item": [
+        {
+          "name": "POST Crear horario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) pm.collectionVariables.set('idHorario', pm.response.json().data.id);",
+                  "pm.test('Crear o conflicto', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idInstitucion\": \"{{idInstitucion}}\",\n  \"idAsignacionDocente\": \"{{idAsignacionDocente}}\",\n  \"idAula\": \"{{idAula}}\",\n  \"diaSemana\": \"MARTES\",\n  \"horaInicio\": \"10:00:00\",\n  \"horaFin\": \"11:30:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/horarios"
+          }
+        },
+        {
+          "name": "POST Conflicto horario (esperado 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Conflicto detectado', () => pm.response.to.have.status(409));"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idInstitucion\": \"{{idInstitucion}}\",\n  \"idAsignacionDocente\": \"{{idAsignacionDocente}}\",\n  \"idAula\": \"{{idAula}}\",\n  \"diaSemana\": \"MARTES\",\n  \"horaInicio\": \"10:30:00\",\n  \"horaFin\": \"12:00:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/horarios"
+          }
+        },
+        {
+          "name": "GET Listar horarios institucion",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/horarios?idInstitucion={{idInstitucion}}"
+          }
+        },
+        {
+          "name": "GET Horarios por asignacion docente",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/horarios/asignacion/{{idAsignacionDocente}}"
+          }
+        },
+        {
+          "name": "GET Horarios por aula",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/horarios/aula/{{idAula}}"
+          }
+        },
+        {
+          "name": "PUT Actualizar horario",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idInstitucion\": \"{{idInstitucion}}\",\n  \"idAsignacionDocente\": \"{{idAsignacionDocente}}\",\n  \"idAula\": \"{{idAula}}\",\n  \"diaSemana\": \"MIERCOLES\",\n  \"horaInicio\": \"10:00:00\",\n  \"horaFin\": \"11:30:00\"\n}"
+            },
+            "url": "{{baseUrl}}/api/horarios/{{idHorario}}"
+          }
+        },
+        {
+          "name": "DELETE Desactivar horario",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/horarios/{{idHorario}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-S2-16 Registrar asistencia",
+      "item": [
+        {
+          "name": "Login DOCENTE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.token) pm.collectionVariables.set('token', json.data.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"docente.mate.demo@si2.test\",\n  \"contrasena\": \"Demo12345!\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "GET Mis asignaciones",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.length) pm.collectionVariables.set('idAsignacionDocente', json.data[0].idAsignacionDocente);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/asistencias/mis-asignaciones"
+          }
+        },
+        {
+          "name": "GET Plantilla asistencia (fecha hoy)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/asistencias/plantilla?idAsignacionDocente={{idAsignacionDocente}}&fecha={{fechaHoy}}"
+          }
+        },
+        {
+          "name": "POST Registrar asistencia masiva",
+          "description": "Reemplazar idInscripcion con valores de la plantilla. Estados: PRESENTE, AUSENTE, TARDANZA, JUSTIFICADO.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) pm.collectionVariables.set('idAsistencia', pm.response.json().data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idAsignacionDocente\": \"{{idAsignacionDocente}}\",\n  \"fecha\": \"{{fechaHoy}}\",\n  \"detalles\": [\n    {\n      \"idInscripcion\": \"REEMPLAZAR_UUID_INSCRIPCION\",\n      \"estadoAsistencia\": \"PRESENTE\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/asistencias"
+          }
+        },
+        {
+          "name": "GET Obtener registro asistencia",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/asistencias/{{idAsistencia}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-S2-17 Consultar asistencia",
+      "item": [
+        {
+          "name": "Login DIRECTOR - consultar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["if (pm.response.json().data.token) pm.collectionVariables.set('token', pm.response.json().data.token);"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"director.demo@si2.test\",\n  \"contrasena\": \"Demo12345!\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "GET Plantilla asistencia (director)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/asistencias/plantilla?idAsignacionDocente={{idAsignacionDocente}}&fecha={{fechaHoy}}"
+          }
+        },
+        {
+          "name": "GET Registro asistencia por ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/asistencias/{{idAsistencia}}"
+          }
+        },
+        {
+          "name": "Login ESTUDIANTE (403 esperado en mis-asignaciones)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.json().data.token) pm.collectionVariables.set('token', pm.response.json().data.token);",
+                  "pm.test('Estudiante sin ASISTENCIA_READ en mis-asignaciones', () => pm.expect([403,200]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"estudiante.lucia.demo@si2.test\",\n  \"contrasena\": \"Demo12345!\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "GET Mis asignaciones (estudiante)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/asistencias/mis-asignaciones"
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-S2-18 Gestionar calificaciones",
+      "item": [
+        {
+          "name": "Login DOCENTE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["if (pm.response.json().data.token) pm.collectionVariables.set('token', pm.response.json().data.token);"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"docente.mate.demo@si2.test\",\n  \"contrasena\": \"Demo12345!\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "GET Mis asignaciones calificaciones",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.length) {",
+                  "  pm.collectionVariables.set('idAsignacionDocente', json.data[0].idAsignacionDocente);",
+                  "  pm.collectionVariables.set('idMateria', json.data[0].idMateria);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/calificaciones/mis-asignaciones"
+          }
+        },
+        {
+          "name": "POST Crear evaluacion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) pm.collectionVariables.set('idEvaluacion', pm.response.json().data.id);",
+                  "pm.test('Crear o duplicado', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idMateria\": \"{{idMateria}}\",\n  \"periodo\": 1,\n  \"tipo\": \"PARCIAL\",\n  \"nombre\": \"Parcial 1 Postman\",\n  \"ponderacion\": 30,\n  \"escala\": \"NUMERICA\",\n  \"estado\": \"ABIERTA\"\n}"
+            },
+            "url": "{{baseUrl}}/api/calificaciones/evaluaciones"
+          }
+        },
+        {
+          "name": "GET Listar evaluaciones por materia",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/calificaciones/evaluaciones?idMateria={{idMateria}}&periodo=1"
+          }
+        },
+        {
+          "name": "GET Plantilla calificaciones",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/calificaciones/plantilla?idEvaluacion={{idEvaluacion}}"
+          }
+        },
+        {
+          "name": "POST Guardar calificaciones",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idEvaluacion\": \"{{idEvaluacion}}\",\n  \"detalles\": [\n    {\n      \"idInscripcion\": \"REEMPLAZAR_UUID_INSCRIPCION\",\n      \"notaNumerica\": 85\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/calificaciones"
+          }
+        },
+        {
+          "name": "GET Resumen calificaciones periodo",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/calificaciones/resumen?idAsignacionDocente={{idAsignacionDocente}}&periodo=1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "HU-S2-19 Historial academico",
+      "item": [
+        {
+          "name": "Login DIRECTOR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["if (pm.response.json().data.token) pm.collectionVariables.set('token', pm.response.json().data.token);"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"director.demo@si2.test\",\n  \"contrasena\": \"Demo12345!\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "GET Listar estudiantes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.length) pm.collectionVariables.set('idEstudiante', json.data[0].id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/estudiantes"
+          }
+        },
+        {
+          "name": "GET Historial academico (director)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/estudiantes/{{idEstudiante}}/historial"
+          }
+        },
+        {
+          "name": "Login ESTUDIANTE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["if (pm.response.json().data.token) pm.collectionVariables.set('token', pm.response.json().data.token);"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"estudiante.lucia.demo@si2.test\",\n  \"contrasena\": \"Demo12345!\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "GET Historial propio (estudiante)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/estudiantes/{{idEstudiante}}/historial"
+          }
+        },
+        {
+          "name": "Login TUTOR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["if (pm.response.json().data.token) pm.collectionVariables.set('token', pm.response.json().data.token);"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"tutor.maria.demo@si2.test\",\n  \"contrasena\": \"Demo12345!\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "GET Historial hijo (tutor)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{baseUrl}}/api/estudiantes/{{idEstudiante}}/historial"
+          }
+        }
+      ]
+    }
+  ]
+}

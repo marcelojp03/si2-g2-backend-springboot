@@ -1,5 +1,6 @@
 package com.uagrm.si2g2.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.uagrm.si2g2.auth.domain.Rol;
 import lombok.Builder;
 import lombok.Data;
@@ -16,7 +17,9 @@ public class RolResponse {
     private String nombre;
     private String descripcion;
     private UUID idInstitucion;
+    @JsonProperty("esGlobal")
     private boolean esGlobal;
+    @JsonProperty("editable")
     private boolean editable;
     private List<PermisoResponse> permisos;
 

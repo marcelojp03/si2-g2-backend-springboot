@@ -1,24 +1,20 @@
 package com.uagrm.si2g2.tutor.application;
 
 import com.uagrm.si2g2.auditoria.application.AuditoriaService;
-import com.uagrm.si2g2.auth.domain.Rol;
-import com.uagrm.si2g2.auth.domain.RolRepository;
 import com.uagrm.si2g2.auth.domain.Usuario;
-import com.uagrm.si2g2.auth.domain.UsuarioRepository;
 import com.uagrm.si2g2.common.SecurityUtils;
+import com.uagrm.si2g2.persona.application.PersonaUsuarioSupport;
+import com.uagrm.si2g2.tenant.TenantContext;
 import com.uagrm.si2g2.tutor.domain.Tutor;
 import com.uagrm.si2g2.tutor.domain.TutorRepository;
 import com.uagrm.si2g2.tutor.dto.TutorRequest;
 import com.uagrm.si2g2.tutor.dto.TutorResponse;
-import com.uagrm.si2g2.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -27,30 +23,27 @@ import java.util.stream.Collectors;
 public class TutorService {
 
     private final TutorRepository repository;
-    private final UsuarioRepository usuarioRepository;
-    private final RolRepository rolRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final PersonaUsuarioSupport personaUsuarioSupport;
     private final AuditoriaService auditoriaService;
 
     @Transactional
     public TutorResponse crear(TutorRequest request) {
         UUID idInstitucion = TenantContext.get();
-        if (usuarioRepository.existsByCorreo(request.getCorreo())) {
-            throw new IllegalStateException("Ya existe un usuario con el correo: " + request.getCorreo());
+
+        Usuario usuario = personaUsuarioSupport.resolveOrCreate(
+                idInstitucion,
+                request.getCorreo(),
+                "TUTOR",
+                request.getNombres(),
+                request.getApellidos(),
+                request.getTelefono(),
+                request.getDocumentoIdentidad()
+        );
+
+        if (repository.findByIdUsuarioAndIdInstitucion(usuario.getId(), idInstitucion).isPresent()) {
+            throw new IllegalStateException("Ya existe un perfil tutor vinculado a este usuario");
         }
-        Rol rol = rolRepository.findByCodigo("TUTOR")
-                .orElseThrow(() -> new IllegalStateException("Rol TUTOR no encontrado"));
-        Usuario usuario = Usuario.builder()
-                .idInstitucion(idInstitucion)
-                .correo(request.getCorreo())
-                .hashContrasena(passwordEncoder.encode(request.getDocumentoIdentidad()))
-                .nombres(request.getNombres())
-                .apellidos(request.getApellidos())
-                .telefono(request.getTelefono())
-                .roles(Set.of(rol))
-                .requiereCambioContrasena(false)
-                .build();
-        usuarioRepository.save(usuario);
+
         Tutor t = Tutor.builder()
                 .idInstitucion(idInstitucion)
                 .idUsuario(usuario.getId())

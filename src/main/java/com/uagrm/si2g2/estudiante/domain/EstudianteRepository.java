@@ -18,6 +18,8 @@ public interface EstudianteRepository extends JpaRepository<Estudiante, UUID> {
 
     boolean existsByIdInstitucionAndDocumentoIdentidad(UUID idInstitucion, String documentoIdentidad);
 
+    Optional<Estudiante> findByIdUsuarioAndIdInstitucion(UUID idUsuario, UUID idInstitucion);
+
     long countByIdInstitucion(UUID idInstitucion);
 
     long countByIdInstitucionAndEstado(UUID idInstitucion, String estado);
