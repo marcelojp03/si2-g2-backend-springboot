@@ -6,6 +6,7 @@ import com.uagrm.si2g2.auth.domain.Usuario;
 import com.uagrm.si2g2.auth.domain.UsuarioRepository;
 import com.uagrm.si2g2.auth.application.RoleService;
 import com.uagrm.si2g2.common.SecurityUtils;
+import com.uagrm.si2g2.persona.application.PersonaProvisioningService;
 import com.uagrm.si2g2.tenant.TenantContext;
 import com.uagrm.si2g2.usuario.dto.ActualizarUsuarioRequest;
 import com.uagrm.si2g2.usuario.dto.AsignarRolRequest;
@@ -26,6 +27,7 @@ public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
     private final RoleService roleService;
+    private final PersonaProvisioningService personaProvisioningService;
     private final AuditoriaService auditoriaService;
 
     @Transactional(readOnly = true)
@@ -79,6 +81,7 @@ public class UsuarioService {
         usuario.getRoles().clear();
         usuario.getRoles().add(rol);
         UsuarioResponse resp = UsuarioResponse.from(usuarioRepository.save(usuario));
+        personaProvisioningService.provisionForUsuario(usuario);
         auditoriaService.registrar(usuario.getIdInstitucion(), SecurityUtils.currentUserId(),
                 "USUARIO", "ASIGNAR_ROL", "usuario", id.toString(),
                 true, "Rol asignado: " + rol.getCodigo());

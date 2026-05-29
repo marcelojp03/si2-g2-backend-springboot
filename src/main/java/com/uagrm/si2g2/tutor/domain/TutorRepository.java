@@ -12,6 +12,8 @@ public interface TutorRepository extends JpaRepository<Tutor, UUID> {
 
     Optional<Tutor> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
 
+    Optional<Tutor> findByIdUsuarioAndIdInstitucion(UUID idUsuario, UUID idInstitucion);
+
     boolean existsByIdInstitucionAndDocumentoIdentidad(UUID idInstitucion, String documentoIdentidad);
 
     long countByIdInstitucion(UUID idInstitucion);
