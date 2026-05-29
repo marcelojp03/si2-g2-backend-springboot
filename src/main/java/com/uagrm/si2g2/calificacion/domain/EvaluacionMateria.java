@@ -9,13 +9,12 @@ import java.util.UUID;
 
 /**
  * ====================================================================
- * ENTIDAD: Evaluacion (REFACTORIZADA)
+ * ENTIDAD: EvaluacionMateria (NUEVA)
  * ====================================================================
  * 
  * Representa una evaluación a nivel de MATERIA (no de asignación docente).
  * Permite que todos los estudiantes de una materia en un período académico
- * se evalúen con la misma estructura, independientemente del docente o
- * paralelo.
+ * se evalúen con la misma estructura.
  * 
  * CARACTERÍSTICAS:
  * - Vinculada a Materia + Período (no a Asignación Docente)
@@ -32,19 +31,22 @@ import java.util.UUID;
  * - ponderacion: Peso en porcentaje (debe sumar ≤100% por materia/período)
  * - escala: NUMERICA (0-100) o LITERAL (A-F)
  * 
- * AUDITORÍA:
+ * AUDITORIA:
  * - creadoPor: ID del usuario que creó
  * - creadoEn, actualizadoEn: Timestamps automáticos
  */
 @Entity
-@Table(name = "evaluacion")
+@Table(name = "evaluacion_materia", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_eval_materia_periodo_nombre", columnNames = { "id_institucion", "id_materia",
+                "periodo", "nombre" })
+})
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(of = "id")
-public class Evaluacion {
+public class EvaluacionMateria {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -73,7 +75,7 @@ public class Evaluacion {
     @Column(name = "tipo", nullable = false, length = 40)
     private String tipo;
 
-    /** Nombre descriptivo de la evaluación: "Parcial 1", "Proyecto Final", etc. */
+    /** Nombre descriptivo: "Parcial 1", "Proyecto Final", etc. */
     @Column(name = "nombre", nullable = false, length = 120)
     private String nombre;
 
@@ -86,7 +88,7 @@ public class Evaluacion {
     @Column(name = "escala", nullable = false, length = 15)
     private String escala = "NUMERICA";
 
-    /** Estado de la evaluación: ABIERTA, CERRADA, ANULADA */
+    /** Estado: ABIERTA, CERRADA, ANULADA */
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 15)
     private String estado = "ABIERTA";
@@ -99,20 +101,13 @@ public class Evaluacion {
     @Column(name = "actualizado_en", nullable = false)
     private Instant actualizadoEn;
 
-    /**
-     * Callback JPA: Se ejecuta antes de guardar la entidad por primera vez.
-     * Inicializa timestamps de creación y actualización.
-     */
     @PrePersist
     protected void onCreate() {
-        creadoEn = Instant.now();
-        actualizadoEn = Instant.now();
+        Instant ahora = Instant.now();
+        creadoEn = ahora;
+        actualizadoEn = ahora;
     }
 
-    /**
-     * Callback JPA: Se ejecuta antes de actualizar la entidad.
-     * Actualiza el timestamp de modificación.
-     */
     @PreUpdate
     protected void onUpdate() {
         actualizadoEn = Instant.now();

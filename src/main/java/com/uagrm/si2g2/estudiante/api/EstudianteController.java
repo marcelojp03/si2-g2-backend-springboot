@@ -2,8 +2,10 @@ package com.uagrm.si2g2.estudiante.api;
 
 import com.uagrm.si2g2.common.dto.ApiResponse;
 import com.uagrm.si2g2.estudiante.application.EstudianteService;
+import com.uagrm.si2g2.estudiante.application.HistorialService;
 import com.uagrm.si2g2.estudiante.dto.EstudianteRequest;
 import com.uagrm.si2g2.estudiante.dto.EstudianteResponse;
+import com.uagrm.si2g2.estudiante.dto.HistorialAcademicoResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,6 +22,7 @@ import java.util.UUID;
 public class EstudianteController {
 
     private final EstudianteService service;
+    private final HistorialService historialService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
@@ -52,5 +55,13 @@ public class EstudianteController {
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
         service.eliminar(id);
         return ResponseEntity.ok(ApiResponse.ok("Estudiante desactivado", null));
+    }
+
+    @GetMapping("/{id}/historial")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE','ESTUDIANTE','TUTOR')")
+    public ResponseEntity<ApiResponse<HistorialAcademicoResponse>> historial(
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID idGestion) {
+        return ResponseEntity.ok(ApiResponse.ok("Historial académico", historialService.obtener(id, idGestion)));
     }
 }

@@ -11,34 +11,32 @@ import java.util.UUID;
 
 public interface EvaluacionRepository extends JpaRepository<Evaluacion, UUID> {
 
-    Optional<Evaluacion> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
+        Optional<Evaluacion> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
 
-    List<Evaluacion> findAllByIdInstitucionAndIdAsignacionDocente(UUID idInstitucion, UUID idAsignacionDocente);
+        List<Evaluacion> findAllByIdInstitucionAndIdMateria(UUID idInstitucion, UUID idMateria);
 
-    List<Evaluacion> findAllByIdInstitucionAndIdAsignacionDocenteAndPeriodo(
-            UUID idInstitucion,
-            UUID idAsignacionDocente,
-            Integer periodo
-    );
+        List<Evaluacion> findAllByIdInstitucionAndIdMateriaAndPeriodo(
+                        UUID idInstitucion,
+                        UUID idMateria,
+                        Integer periodo);
 
-    boolean existsByIdInstitucionAndIdAsignacionDocenteAndPeriodoAndNombreIgnoreCase(
-            UUID idInstitucion,
-            UUID idAsignacionDocente,
-            Integer periodo,
-            String nombre
-    );
+        boolean existsByIdInstitucionAndIdMateriaAndPeriodoAndNombreIgnoreCase(
+                        UUID idInstitucion,
+                        UUID idMateria,
+                        Integer periodo,
+                        String nombre);
 
-    @Query("""
-            select coalesce(sum(e.ponderacion), 0)
-            from Evaluacion e
-            where e.idInstitucion = :idInstitucion
-              and e.idAsignacionDocente = :idAsignacionDocente
-              and e.periodo = :periodo
-              and e.estado <> 'ANULADA'
-              and (:idExcluir is null or e.id <> :idExcluir)
-            """)
-    BigDecimal sumPonderacionActiva(@Param("idInstitucion") UUID idInstitucion,
-                                    @Param("idAsignacionDocente") UUID idAsignacionDocente,
-                                    @Param("periodo") Integer periodo,
-                                    @Param("idExcluir") UUID idExcluir);
+        @Query("""
+                        select coalesce(sum(e.ponderacion), 0)
+                        from Evaluacion e
+                        where e.idInstitucion = :idInstitucion
+                          and e.idMateria = :idMateria
+                          and e.periodo = :periodo
+                          and e.estado <> 'ANULADA'
+                          and (:idExcluir is null or e.id <> :idExcluir)
+                        """)
+        BigDecimal sumPonderacionActiva(@Param("idInstitucion") UUID idInstitucion,
+                        @Param("idMateria") UUID idMateria,
+                        @Param("periodo") Integer periodo,
+                        @Param("idExcluir") UUID idExcluir);
 }
