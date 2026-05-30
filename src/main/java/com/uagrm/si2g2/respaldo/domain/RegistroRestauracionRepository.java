@@ -1,0 +1,13 @@
+package com.uagrm.si2g2.respaldo.domain;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface RegistroRestauracionRepository extends JpaRepository<RegistroRestauracion, UUID> {
+
+    List<RegistroRestauracion> findAllByIdInstitucionOrderByFechaSolicitudDesc(UUID idInstitucion);
+
+    List<RegistroRestauracion> findAllByOrderByFechaSolicitudDesc();
+}

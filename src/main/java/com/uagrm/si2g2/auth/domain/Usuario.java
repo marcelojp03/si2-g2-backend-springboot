@@ -55,6 +55,9 @@ public class Usuario implements UserDetails {
     @Column(name = "ultimo_acceso")
     private Instant ultimoAcceso;
 
+    @Column(name = "fcm_token")
+    private String fcmToken;
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     private Instant creadoEn;
 

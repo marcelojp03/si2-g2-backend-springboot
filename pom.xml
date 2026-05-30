@@ -104,6 +104,13 @@
 			<artifactId>s3</artifactId>
 			<version>2.25.70</version>
 		</dependency>
+
+		<!-- Firebase Admin SDK (FCM push notifications) -->
+		<dependency>
+			<groupId>com.google.firebase</groupId>
+			<artifactId>firebase-admin</artifactId>
+			<version>9.8.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>

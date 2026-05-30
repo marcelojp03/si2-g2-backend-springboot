@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -50,5 +51,13 @@ public class AsistenciaController {
     @PreAuthorize("hasAnyAuthority('ASISTENCIA_READ','ASISTENCIA_WRITE','ASISTENCIA_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<AsistenciaRegistroResponse>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Asistencia", service.obtener(id)));
+    }
+
+    @GetMapping("/resumen")
+    @PreAuthorize("hasAnyAuthority('ASISTENCIA_READ','ASISTENCIA_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> obtenerResumen(
+            @RequestParam UUID idAsignacionDocente) {
+        return ResponseEntity.ok(ApiResponse.ok("Resumen de asistencia por estudiante",
+                service.obtenerResumenPorAsignacion(idAsignacionDocente)));
     }
 }

@@ -17,6 +17,7 @@ import com.uagrm.si2g2.auditoria.application.AuditoriaService;
 import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.config.AppProperties;
 import com.uagrm.si2g2.persona.application.PersonaProvisioningService;
+import com.uagrm.si2g2.saas.suscripcion.domain.SuscripcionInstitucionRepository;
 import com.uagrm.si2g2.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +52,8 @@ public class AuthService {
     private final RoleService roleService;
     private final PersonaProvisioningService personaProvisioningService;
     private final AppProperties appProperties;
+    private final SuscripcionInstitucionRepository suscripcionRepo;
+    private final IntentoLoginService intentoLoginService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -60,9 +63,21 @@ public class AuthService {
         }
 
         UUID idInstitucion = resolveTargetInstitutionId(request);
+
+        // Validar límite de usuarios del plan vigente
+        if (idInstitucion != null) {
+            suscripcionRepo.findActivaByIdInstitucion(idInstitucion).ifPresent(s -> {
+                long actuales = usuarioRepository.countByIdInstitucionAndEstado(idInstitucion, "ACTIVO");
+                if (actuales >= s.getPlan().getMaxUsuarios()) {
+                    throw new IllegalStateException(
+                            "Se ha alcanzado el límite de usuarios del plan " + s.getPlan().getCodigo()
+                                    + " (" + s.getPlan().getMaxUsuarios() + "). Actualice su plan para agregar más usuarios.");
+                }
+            });
+        }
+
         if (request.getIdRol() == null && (request.getCodigoRol() == null || request.getCodigoRol().isBlank())) {
             throw new IllegalArgumentException("Debes seleccionar un rol para el nuevo usuario");
-        }
 
         String codigoRol = (request.getCodigoRol() != null && !request.getCodigoRol().isBlank())
                 ? request.getCodigoRol()
@@ -108,6 +123,13 @@ public class AuthService {
             );
         } catch (BadCredentialsException e) {
             log.warn("Login fallido: correo={}", request.getCorreo());
+            // Resolver usuario si existe para obtener idInstitucion
+            Usuario usuarioFallido = usuarioRepository.findByCorreo(request.getCorreo()).orElse(null);
+            intentoLoginService.registrarFallo(
+                    request.getCorreo(),
+                    "CREDENCIALES_INVALIDAS",
+                    usuarioFallido != null ? usuarioFallido.getId() : null,
+                    usuarioFallido != null ? usuarioFallido.getIdInstitucion() : null);
             auditoriaService.registrar(null, null,
                     "AUTH", "LOGIN_FALLIDO", "usuario", null,
                     false, "Credenciales incorrectas para: " + request.getCorreo());
@@ -119,6 +141,7 @@ public class AuthService {
 
         log.info("Login exitoso: correo={}, roles={}", usuario.getCorreo(),
                 usuario.getRoles().stream().map(Rol::getCodigo).collect(Collectors.joining(",")));
+        intentoLoginService.registrarExito(usuario);
         auditoriaService.registrar(usuario.getIdInstitucion(), usuario.getId(),
                 "AUTH", "LOGIN_EXITOSO", "usuario", usuario.getId().toString(),
                 true, null);
@@ -254,6 +277,15 @@ public class AuthService {
         Map<String, Object> claims = new HashMap<>();
         if (usuario.getIdInstitucion() != null) {
             claims.put("id_institucion", usuario.getIdInstitucion().toString());
+            // Incluir plan y módulos activos si la institución tiene suscripción vigente
+            suscripcionRepo.findActivaByIdInstitucion(usuario.getIdInstitucion()).ifPresent(s -> {
+                claims.put("plan_codigo", s.getPlan().getCodigo());
+                List<String> modulos = s.getPlan().getModulos().stream()
+                        .filter(m -> "ACTIVO".equals(m.getEstado()))
+                        .map(m -> m.getCodigo())
+                        .toList();
+                claims.put("modulos_activos", modulos);
+            });
         }
         claims.put("roles", roles);
         claims.put("permisos", permisos);
