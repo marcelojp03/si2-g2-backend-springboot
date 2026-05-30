@@ -78,6 +78,7 @@ public class AuthService {
 
         if (request.getIdRol() == null && (request.getCodigoRol() == null || request.getCodigoRol().isBlank())) {
             throw new IllegalArgumentException("Debes seleccionar un rol para el nuevo usuario");
+        }
 
         String codigoRol = (request.getCodigoRol() != null && !request.getCodigoRol().isBlank())
                 ? request.getCodigoRol()
