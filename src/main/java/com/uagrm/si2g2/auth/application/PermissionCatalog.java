@@ -34,6 +34,10 @@ public final class PermissionCatalog {
     public static final String CALIFICACIONES_READ_ALL = "CALIFICACIONES_READ_ALL";
     public static final String CALIFICACIONES_OVERRIDE_CIERRE = "CALIFICACIONES_OVERRIDE_CIERRE";
 
+    public static final String REPORTES_READ = "REPORTES_READ";
+    public static final String REPORTES_EXPORT = "REPORTES_EXPORT";
+    public static final String REPORTES_WRITE = "REPORTES_WRITE";
+
     public static final Set<String> ADMIN_INSTITUCION = Set.of(
             USUARIOS_READ, USUARIOS_WRITE,
             CONFIGURACION_READ, CONFIGURACION_WRITE,
@@ -44,7 +48,8 @@ public final class PermissionCatalog {
             MI_AREA_READ,
             AUDITORIA_READ,
             ASISTENCIA_READ, ASISTENCIA_WRITE, ASISTENCIA_READ_ALL, ASISTENCIA_BACKDATE,
-            CALIFICACIONES_READ, CALIFICACIONES_WRITE, CALIFICACIONES_READ_ALL, CALIFICACIONES_OVERRIDE_CIERRE
+            CALIFICACIONES_READ, CALIFICACIONES_WRITE, CALIFICACIONES_READ_ALL, CALIFICACIONES_OVERRIDE_CIERRE,
+            REPORTES_READ, REPORTES_EXPORT, REPORTES_WRITE
     );
 
     public static final Set<String> DIRECTOR = Set.of(
@@ -57,7 +62,8 @@ public final class PermissionCatalog {
             MI_AREA_READ,
             AUDITORIA_READ,
             ASISTENCIA_READ, ASISTENCIA_WRITE, ASISTENCIA_READ_ALL, ASISTENCIA_BACKDATE,
-            CALIFICACIONES_READ, CALIFICACIONES_WRITE, CALIFICACIONES_READ_ALL, CALIFICACIONES_OVERRIDE_CIERRE
+            CALIFICACIONES_READ, CALIFICACIONES_WRITE, CALIFICACIONES_READ_ALL, CALIFICACIONES_OVERRIDE_CIERRE,
+            REPORTES_READ, REPORTES_EXPORT, REPORTES_WRITE
     );
 
     public static final Set<String> SECRETARIO = Set.of(
@@ -66,14 +72,16 @@ public final class PermissionCatalog {
             PERSONAS_READ, PERSONAS_WRITE,
             OPERACION_READ, OPERACION_WRITE,
             ASISTENCIA_READ, ASISTENCIA_READ_ALL,
-            CALIFICACIONES_READ, CALIFICACIONES_READ_ALL
+            CALIFICACIONES_READ, CALIFICACIONES_READ_ALL,
+            REPORTES_READ, REPORTES_EXPORT
     );
 
     public static final Set<String> DOCENTE = Set.of(
             OPERACION_READ,
             MI_AREA_READ,
             ASISTENCIA_READ,
-            CALIFICACIONES_READ, CALIFICACIONES_WRITE
+            CALIFICACIONES_READ, CALIFICACIONES_WRITE,
+            REPORTES_READ
     );
 
     public static final Set<String> ESTUDIANTE = Set.of();
@@ -102,7 +110,10 @@ public final class PermissionCatalog {
             new Definition(CALIFICACIONES_READ, "Calificaciones: lectura", "CALIFICACIONES", "READ", "Permite consultar evaluaciones y calificaciones"),
             new Definition(CALIFICACIONES_WRITE, "Calificaciones: escritura", "CALIFICACIONES", "WRITE", "Permite registrar y modificar evaluaciones y calificaciones"),
             new Definition(CALIFICACIONES_READ_ALL, "Calificaciones: lectura institucional", "CALIFICACIONES", "READ_ALL", "Permite consultar calificaciones de todos los docentes de la institucion"),
-            new Definition(CALIFICACIONES_OVERRIDE_CIERRE, "Calificaciones: cierre", "CALIFICACIONES", "OVERRIDE_CIERRE", "Permite modificar calificaciones en evaluaciones cerradas")
+            new Definition(CALIFICACIONES_OVERRIDE_CIERRE, "Calificaciones: cierre", "CALIFICACIONES", "OVERRIDE_CIERRE", "Permite modificar calificaciones en evaluaciones cerradas"),
+            new Definition(REPORTES_READ, "Reportes: lectura", "REPORTES", "READ", "Permite consultar reportes institucionales"),
+            new Definition(REPORTES_EXPORT, "Reportes: exportacion", "REPORTES", "EXPORT", "Permite exportar reportes institucionales"),
+            new Definition(REPORTES_WRITE, "Reportes: configuracion", "REPORTES", "WRITE", "Permite guardar filtros y configuraciones de reportes")
     );
 
     @Getter
