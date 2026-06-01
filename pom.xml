@@ -111,6 +111,20 @@
 			<artifactId>firebase-admin</artifactId>
 			<version>9.8.0</version>
 		</dependency>
+
+		<!-- Reportes: Excel XLSX -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.2.5</version>
+		</dependency>
+
+		<!-- Reportes: PDF desde HTML -->
+		<dependency>
+			<groupId>com.openhtmltopdf</groupId>
+			<artifactId>openhtmltopdf-pdfbox</artifactId>
+			<version>1.0.10</version>
+		</dependency>
 	</dependencies>
 
 	<build>
