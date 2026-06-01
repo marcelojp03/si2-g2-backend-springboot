@@ -122,4 +122,7 @@ public class AppProperties {
         @NotBlank
         private String hashSecret = "local-audit-secret-change-me";
     }
+
+    /** URL base del frontend (para construir links en correos). */
+    private String frontendUrl = "http://localhost:4200";
 }

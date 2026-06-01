@@ -2,8 +2,12 @@ package com.uagrm.si2g2.saas.solicitud.application;
 
 import com.uagrm.si2g2.auditoria.application.AuditoriaService;
 import com.uagrm.si2g2.auth.domain.*;
+import com.uagrm.si2g2.common.email.EmailService;
+import com.uagrm.si2g2.config.AppProperties;
 import com.uagrm.si2g2.institucion.domain.Institucion;
 import com.uagrm.si2g2.institucion.domain.InstitucionRepository;
+import com.uagrm.si2g2.saas.pago.domain.PagoSuscripcion;
+import com.uagrm.si2g2.saas.pago.domain.PagoSuscripcionRepository;
 import com.uagrm.si2g2.saas.plan.domain.PlanSuscripcion;
 import com.uagrm.si2g2.saas.plan.domain.PlanSuscripcionRepository;
 import com.uagrm.si2g2.saas.solicitud.domain.SolicitudOnboarding;
@@ -38,6 +42,9 @@ public class SolicitudOnboardingService {
     private final SuscripcionInstitucionRepository suscripcionRepo;
     private final PasswordEncoder passwordEncoder;
     private final AuditoriaService auditoriaService;
+    private final PagoSuscripcionRepository pagoRepo;
+    private final EmailService emailService;
+    private final AppProperties appProperties;
 
     // ──────────────────────────────────────────────────────────────────────────────
     // PÚBLICA — sin autenticación
@@ -106,8 +113,33 @@ public class SolicitudOnboardingService {
         SolicitudOnboarding s = requireEstado(id, "PENDIENTE_REVISION");
         s.setEstado("APROBADA");
         s.setNotasAdmin(req.notasAdmin());
-        log.info("Solicitud aprobada: id={}", id);
-        return SolicitudOnboardingResponse.from(solicitudRepo.save(s));
+        solicitudRepo.save(s);
+
+        // Crear registro de pago (sin QR aún — se genera lazily cuando el cliente abre el link)
+        PlanSuscripcion plan = s.getPlan();
+        PagoSuscripcion pago = PagoSuscripcion.builder()
+                .idSolicitud(s.getId())
+                .idPlan(plan.getId())
+                .monto(plan.getPrecioMensual())
+                .moneda("BOB")
+                .estado("PENDIENTE")
+                .glosa("Plan " + plan.getNombre() + " - " + s.getNombreInstitucion())
+                .fechaExpiracion(LocalDate.now().plusDays(14))
+                .build();
+        pago = pagoRepo.save(pago);
+
+        // Enviar email de aprobación con link de pago
+        String linkPago = appProperties.getFrontendUrl() + "/pagar/" + pago.getTokenPago();
+        emailService.enviarAprobacionConLinkPago(
+                s.getCorreoContacto(),
+                s.getNombresContacto(),
+                plan.getNombre(),
+                plan.getPrecioMensual(),
+                "BOB",
+                linkPago);
+
+        log.info("Solicitud aprobada: id={} linkPago={}", id, linkPago);
+        return SolicitudOnboardingResponse.from(s);
     }
 
     @Transactional
@@ -121,16 +153,34 @@ public class SolicitudOnboardingService {
 
     @Transactional
     public SolicitudOnboardingResponse confirmarPago(UUID id) {
-        SolicitudOnboarding s = requireEstado(id, "APROBADA");
+        SolicitudOnboarding s = requireEstado(id, "APROBADA", "PENDIENTE_PAGO");
         s.setEstado("PAGADO");
-        log.info("Pago confirmado (simulado): id={}", id);
+        log.info("Pago confirmado (manual): id={}", id);
         return SolicitudOnboardingResponse.from(solicitudRepo.save(s));
     }
 
     @Transactional
     public SolicitudOnboardingResponse activar(UUID id) {
         SolicitudOnboarding s = requireEstado(id, "PAGADO");
+        doActivar(s);
+        return SolicitudOnboardingResponse.from(s);
+    }
 
+    /**
+     * Activa la institución de la solicitud y devuelve los datos del usuario creado.
+     * Usado internamente por el flujo automático de pago (sin pasar por HTTP).
+     */
+    @Transactional
+    public ActivacionResult activarDesde(UUID id) {
+        SolicitudOnboarding s = requireEstado(id, "PAGADO");
+        Usuario usuario = doActivar(s);
+        return new ActivacionResult(usuario.getId(), usuario.getCorreo(), s.getPlan().getNombre());
+    }
+
+    /** Resultado de {@link #activarDesde}. */
+    public record ActivacionResult(UUID idUsuario, String correo, String nombrePlan) {}
+
+    private Usuario doActivar(SolicitudOnboarding s) {
         // 1. Crear institución
         String codigo = generarCodigoInstitucion(s.getNombreInstitucion());
         Institucion institucion = Institucion.builder()
@@ -145,7 +195,7 @@ public class SolicitudOnboardingService {
         institucion = institucionRepo.save(institucion);
         final UUID idInstitucion = institucion.getId();
 
-        // 2. Crear usuario ADMIN_INSTITUCION con contraseña temporal
+        // 2. Crear usuario ADMIN_INSTITUCION (contraseña temporal; el usuario la reemplazará vía link de activación)
         Rol rolAdmin = rolRepo.findByCodigo("ADMIN_INSTITUCION")
                 .orElseThrow(() -> new EntityNotFoundException("Rol ADMIN_INSTITUCION no encontrado"));
 
@@ -185,7 +235,7 @@ public class SolicitudOnboardingService {
                 true, "Institución " + institucion.getNombre() + " activada. Plan: " + s.getPlan().getCodigo());
 
         log.info("Solicitud activada: institucion={}, usuario={}", idInstitucion, usuario.getId());
-        return SolicitudOnboardingResponse.from(s);
+        return usuario;
     }
 
     // ──────────────────────────────────────────────────────────────────────────────

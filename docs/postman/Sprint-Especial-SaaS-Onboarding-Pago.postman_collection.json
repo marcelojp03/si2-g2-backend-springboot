@@ -1,0 +1,168 @@
+{
+  "info": {
+    "_postman_id": "sprint-especial-saas-onboarding-pago-si2-g2",
+    "name": "SI2-G2 Sprint Especial - SaaS Onboarding y Pago",
+    "description": "Coleccion para probar onboarding SaaS, pago publico Vpay y correo de prueba.\n\nFlujo recomendado:\n1) Login SUPER_ADMIN\n2) Enviar solicitud onboarding (publico)\n3) Listar pendientes y guardar solicitudId\n4) Aprobar solicitud (envia correo con link /pagar/{token})\n5) Probar endpoints publicos de pago con tokenPago\n6) Enviar correo de prueba\n\nNotas:\n- El tokenPago se obtiene desde el link enviado por correo.\n- Para crear primera contrasena del admin activado, usar challengeId y recoveryToken del enlace de activacion.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:2026" },
+    { "key": "token", "value": "" },
+    { "key": "idPlan", "value": "" },
+    { "key": "solicitudId", "value": "" },
+    { "key": "tokenPago", "value": "" },
+    { "key": "challengeId", "value": "" },
+    { "key": "recoveryToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 - Auth",
+      "item": [
+        {
+          "name": "Login SUPER_ADMIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "if (json?.data?.token) pm.collectionVariables.set('token', json.data.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"superadmin@example.com\",\n  \"contrasena\": \"change_me_super_admin\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Onboarding SaaS",
+      "item": [
+        {
+          "name": "POST Solicitud onboarding (publico)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombreInstitucion\": \"Colegio Postman Demo\",\n  \"tipoInstitucion\": \"PRIVADO\",\n  \"telefonoInstitucion\": \"70000000\",\n  \"correoInstitucion\": \"contacto@colegiopostman.test\",\n  \"direccionInstitucion\": \"Av. Demo 123\",\n  \"nombresContacto\": \"Carla\",\n  \"apellidosContacto\": \"Prueba\",\n  \"correoContacto\": \"carla.prueba@colegiopostman.test\",\n  \"telefonoContacto\": \"70000001\",\n  \"idPlan\": \"{{idPlan}}\",\n  \"mensaje\": \"Solicitud creada desde Postman\"\n}"
+            },
+            "url": "{{baseUrl}}/api/public/solicitudes"
+          }
+        },
+        {
+          "name": "GET Solicitudes pendientes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Listado OK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "if (Array.isArray(json?.data) && json.data.length > 0) {",
+                  "  pm.collectionVariables.set('solicitudId', json.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": "{{baseUrl}}/api/saas/solicitudes?estado=PENDIENTE_REVISION"
+          }
+        },
+        {
+          "name": "PUT Aprobar solicitud",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notasAdmin\": \"Aprobada desde Postman\"\n}"
+            },
+            "url": "{{baseUrl}}/api/saas/solicitudes/{{solicitudId}}/aprobar"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Pago publico Vpay",
+      "item": [
+        {
+          "name": "GET Pago publico (genera QR lazily)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/public/pago/{{tokenPago}}"
+          }
+        },
+        {
+          "name": "GET Estado pago publico",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/public/pago/{{tokenPago}}/estado"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Correo",
+      "item": [
+        {
+          "name": "POST Correo de prueba (SUPER_ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destinatario\": \"destino@demo.test\",\n  \"asunto\": \"Prueba SMTP desde Postman\",\n  \"mensaje\": \"Este correo verifica que el endpoint /api/saas/email/prueba funciona correctamente.\"\n}"
+            },
+            "url": "{{baseUrl}}/api/saas/email/prueba"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Crear contrasena inicial",
+      "item": [
+        {
+          "name": "POST Reset password con challenge pre-verificado",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"challengeId\": \"{{challengeId}}\",\n  \"recoveryToken\": \"{{recoveryToken}}\",\n  \"nuevaContrasena\": \"AdminDemo123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/password-recovery/reset"
+          }
+        }
+      ]
+    }
+  ]
+}

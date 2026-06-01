@@ -27,7 +27,6 @@ spring:
       max-request-size: 10MB
       location: ${java.io.tmpdir}
 
-spring:
   mail:
     host: ${SMTP_HOST:pro.turbo-smtp.com}
     port: ${SMTP_PORT:587}
@@ -84,4 +83,18 @@ app:
   firebase:
     credentials-path: ${FIREBASE_CREDENTIALS_PATH:gestion-academica-firebase.json}
   mail:
-    from: ${SMTP_FROM:noreply@sia-academico.com}
+    transport: ${MAIL_TRANSPORT:SMTP}
+    from: ${SMTP_FROM:no-reply@example.com}
+    from-name: ${MAIL_FROM_NAME:SIA}
+    mailtrap:
+      api-url: ${MAILTRAP_API_URL:https://send.api.mailtrap.io/api/send}
+      token: ${MAILTRAP_API_TOKEN:}
+  vpay:
+    base-url: ${VPAY_BASE_URL:https://vpay.com.bo:7778/pro}
+    token: ${VPAY_TOKEN:}
+    user: ${VPAY_USER:}
+    company: ${VPAY_COMPANY:1}
+    bank: ${VPAY_BANK:BMSC}
+    destination-account: ${VPAY_DESTINATION_ACCOUNT:}
+    verify-ssl: ${VPAY_VERIFY_SSL:true}
+  frontend-url: ${FRONTEND_URL:http://localhost:4200}

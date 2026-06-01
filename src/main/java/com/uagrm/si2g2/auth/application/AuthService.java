@@ -319,4 +319,35 @@ public class AuthService {
     private String generateOtp() {
         return String.format("%06d", new Random().nextInt(1_000_000));
     }
+
+    /**
+     * Genera un {@link PasswordRecoveryChallenge} pre-verificado para el usuario indicado.
+     *
+     * <p>Se usa durante la activación automática de la institución: en lugar de una
+     * contraseña temporal, el nuevo ADMIN_INSTITUCION recibe un link directo para
+     * establecer su primera contraseña sin necesidad de código OTP.</p>
+     *
+     * @param idUsuario UUID del usuario recién creado
+     * @param correo    correo del usuario
+     * @return record con {@code challengeId} y {@code recoveryToken}
+     */
+    @Transactional
+    public ChallengeActivacion generarChallengeActivacion(UUID idUsuario, String correo) {
+        PasswordRecoveryChallenge challenge = PasswordRecoveryChallenge.builder()
+                .idUsuario(idUsuario)
+                .correo(correo)
+                .codigoVerificacion(generateOtp())          // OTP no se usará (pre-verificado)
+                .tokenRecuperacion(UUID.randomUUID().toString())
+                // 7 días para que el admin configure su contraseña
+                .expiraEn(java.time.Instant.now().plusSeconds(7L * 24 * 60 * 60))
+                .verificado(true)
+                .verificadoEn(java.time.Instant.now())
+                .build();
+        passwordRecoveryChallengeRepository.save(challenge);
+        log.info("[AUTH] Challenge de activación generado para usuario={}", idUsuario);
+        return new ChallengeActivacion(challenge.getId(), challenge.getTokenRecuperacion());
+    }
+
+    /** Resultado de {@link #generarChallengeActivacion}. */
+    public record ChallengeActivacion(UUID challengeId, String recoveryToken) {}
 }

@@ -8,6 +8,8 @@ import com.uagrm.si2g2.ia.dto.ConsultaNaturalIaResponse;
 import com.uagrm.si2g2.ia.dto.FiltroReporteDto;
 import com.uagrm.si2g2.ia.dto.InterpretacionIaRequest;
 import com.uagrm.si2g2.ia.dto.InterpretacionIaResponse;
+import com.uagrm.si2g2.ia.dto.ReporteNlIaRequest;
+import com.uagrm.si2g2.ia.dto.ReporteNlIaResponse;
 import com.uagrm.si2g2.ia.dto.RiesgoEstudianteRequest;
 import com.uagrm.si2g2.ia.dto.RiesgoEstudianteResponse;
 import lombok.RequiredArgsConstructor;
@@ -168,6 +170,46 @@ public class AiIntegrationService {
         } catch (RestClientResponseException ex) {
             log.error("[IA] consultaNatural FAILED — {}", ex.getMessage());
             throw new RuntimeException("Error al ejecutar consulta natural con IA: " + ex.getMessage(), ex);
+        }
+    }
+
+    // ── NL → Reporte handler (reemplaza regex Java) ────────────────────────────
+
+    /**
+     * Llama a FastAPI POST /api/ia/reporte/nl-a-reporte.
+     * GPT-4o-mini detecta el código de reporte adecuado y filtros no-UUID.
+     * Spring Boot resuelve los nombres de entidades a UUIDs multi-tenant.
+     *
+     * @param request    consulta en lenguaje natural
+     * @param authHeader JWT del usuario ("Authorization: Bearer <token>")
+     */
+    public ReporteNlIaResponse nlAReporte(ReporteNlIaRequest request, String authHeader) {
+
+        log.info("[IA] nlAReporte — consulta='{}' → {}", request.consulta(), fastapiBaseUrl);
+        long start = System.currentTimeMillis();
+
+        try {
+            Map<?, ?> body = client().post()
+                    .uri("/api/ia/reporte/nl-a-reporte")
+                    .header("Authorization", authHeader)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, (req, res) -> {
+                        throw new RuntimeException("FastAPI error " + res.getStatusCode());
+                    })
+                    .body(Map.class);
+
+            Map<String, Object> data = extractDataAsMap(body);
+            ReporteNlIaResponse response = objectMapper.convertValue(data, ReporteNlIaResponse.class);
+
+            log.info("[IA] nlAReporte OK — reporte={}, confianza={}, {} ms",
+                    response.codigoReporte(), response.confianza(), System.currentTimeMillis() - start);
+            return response;
+
+        } catch (RestClientResponseException ex) {
+            log.error("[IA] nlAReporte FAILED — {}", ex.getMessage());
+            throw new RuntimeException("Error al interpretar consulta de reporte con IA: " + ex.getMessage(), ex);
         }
     }
 

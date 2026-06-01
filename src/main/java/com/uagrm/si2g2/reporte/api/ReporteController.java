@@ -76,14 +76,19 @@ public class ReporteController {
 
     @PostMapping("/nl/preview")
     @PreAuthorize("hasAnyAuthority('REPORTES_READ','REPORTES_EXPORT','REPORTES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
-    public ResponseEntity<ApiResponse<ReportePreviewResponse>> previewNaturalLanguage(@Valid @RequestBody ReporteNaturalLanguageRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok("Reporte NL generado", naturalLanguageService.preview(request)));
+    public ResponseEntity<ApiResponse<ReportePreviewResponse>> previewNaturalLanguage(
+            @Valid @RequestBody ReporteNaturalLanguageRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+        return ResponseEntity.ok(ApiResponse.ok("Reporte NL generado", naturalLanguageService.preview(request, authHeader)));
     }
 
     @PostMapping("/nl/export/{formato}")
     @PreAuthorize("hasAnyAuthority('REPORTES_EXPORT','REPORTES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
-    public ResponseEntity<byte[]> exportarNaturalLanguage(@PathVariable String formato, @Valid @RequestBody ReporteNaturalLanguageRequest request) {
-        return fileResponse(naturalLanguageService.exportar(request, formato));
+    public ResponseEntity<byte[]> exportarNaturalLanguage(
+            @PathVariable String formato,
+            @Valid @RequestBody ReporteNaturalLanguageRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+        return fileResponse(naturalLanguageService.exportar(request, formato, authHeader));
     }
 
     @GetMapping("/qbe/catalogo")
