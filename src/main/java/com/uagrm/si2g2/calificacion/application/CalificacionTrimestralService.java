@@ -558,8 +558,8 @@ public class CalificacionTrimestralService {
     private ConsolidadoTrimestralEstudianteResponse construirRowDesdeAsignacion(UUID idInstitucion,
             GestionAcademica gestion, PeriodoTrimestral periodo, AsignacionDocente asignacion, Estudiante estudiante) {
         List<ActividadEvaluativa> actividades = actividadRepository
-                .findAllByIdInstitucionAndIdPeriodoTrimestralAndIdMateriaAndIdParalelo(idInstitucion,
-                        periodo.getId(), asignacion.getIdMateria(), asignacion.getIdParalelo())
+                .findAllByIdInstitucionAndIdPeriodoTrimestralAndIdMateriaAndIdCursoAndIdParalelo(idInstitucion,
+                        periodo.getId(), asignacion.getIdMateria(), idCursoDeAsignacion(asignacion), asignacion.getIdParalelo())
                 .stream()
                 .filter(actividad -> ESTADO_ACTIVO.equals(actividad.getEstado())
                         || ESTADO_BORRADOR.equals(actividad.getEstado()))
@@ -845,11 +845,17 @@ public class CalificacionTrimestralService {
 
     private int contarActividades(AsignacionDocente asignacion, PeriodoTrimestral periodo, String dimension) {
         return (int) actividadRepository
-                .findAllByIdInstitucionAndIdPeriodoTrimestralAndIdMateriaAndIdParalelo(
+                .findAllByIdInstitucionAndIdPeriodoTrimestralAndIdMateriaAndIdCursoAndIdParalelo(
                         SecurityUtils.requireCurrentInstitutionId(), periodo.getId(), asignacion.getIdMateria(),
-                        asignacion.getIdParalelo())
+                        idCursoDeAsignacion(asignacion), asignacion.getIdParalelo())
                 .stream()
                 .filter(actividad -> dimension.equals(actividad.getDimension()))
                 .count();
+    }
+
+    private UUID idCursoDeAsignacion(AsignacionDocente asignacion) {
+        return paraleloRepository.findByIdAndIdInstitucion(asignacion.getIdParalelo(), asignacion.getIdInstitucion())
+                .map(Paralelo::getIdCurso)
+                .orElseThrow(() -> new EntityNotFoundException("Paralelo no encontrado: " + asignacion.getIdParalelo()));
     }
 }
