@@ -1,11 +1,11 @@
 -- =========================================================
 -- SISTEMA DE GESTIÓN ACADÉMICA SaaS — SCRIPT CONSOLIDADO
--- Sprint 1 + Sprint 2 + Sprint Especial (FCM, SaaS, RBAC)
+-- Sprint 1 + Sprint 2 (incl. HU-S2-18 trimestral) + Sprint Especial
 -- PostgreSQL · Schema: sia
 -- =========================================================
 -- Script único para crear el esquema completo desde cero.
--- Para bases de datos existentes con Sprint 1+2 (hasta sprint2-fixes)
--- ejecutar solo: sprint-especial-saas-migration.sql
+-- Para bases de datos existentes usar los scripts incrementales
+-- correspondientes (sprint-especial-saas-migration.sql, etc.)
 -- =========================================================
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -528,10 +528,19 @@ CREATE INDEX idx_asistencia_detalle_estado ON asistencia_detalle (estado_asisten
 -- 9. CALIFICACIONES — Sprint 2
 -- =========================================================
 
+CREATE TABLE docente_materia (
+    id_docente UUID NOT NULL REFERENCES docente(id) ON DELETE CASCADE,
+    id_materia UUID NOT NULL REFERENCES materia(id) ON DELETE CASCADE,
+    PRIMARY KEY (id_docente, id_materia)
+);
+
+CREATE INDEX idx_docente_materia_materia ON docente_materia (id_materia);
+
 CREATE TABLE evaluacion (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_institucion UUID NOT NULL REFERENCES institucion(id) ON DELETE CASCADE,
-    id_asignacion_docente UUID NOT NULL REFERENCES asignacion_docente(id),
+    id_materia UUID NOT NULL REFERENCES materia(id),
+    id_asignacion_docente UUID NULL REFERENCES asignacion_docente(id),
     creado_por UUID NULL REFERENCES usuario(id) ON DELETE SET NULL,
     periodo INTEGER NOT NULL CHECK (periodo >= 1),
     tipo VARCHAR(40) NOT NULL,
@@ -541,7 +550,23 @@ CREATE TABLE evaluacion (
     estado VARCHAR(15) NOT NULL DEFAULT 'ABIERTA' CHECK (estado IN ('ABIERTA', 'CERRADA', 'ANULADA')),
     creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT uq_evaluacion_asignacion_periodo_nombre UNIQUE (id_asignacion_docente, periodo, nombre)
+    CONSTRAINT uq_evaluacion_materia_periodo_nombre UNIQUE (id_institucion, id_materia, periodo, nombre)
+);
+
+CREATE TABLE evaluacion_materia (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_institucion UUID NOT NULL REFERENCES institucion(id) ON DELETE CASCADE,
+    id_materia UUID NOT NULL REFERENCES materia(id),
+    creado_por UUID NULL REFERENCES usuario(id) ON DELETE SET NULL,
+    periodo INTEGER NOT NULL CHECK (periodo >= 1),
+    tipo VARCHAR(40) NOT NULL,
+    nombre VARCHAR(120) NOT NULL,
+    ponderacion NUMERIC(5,2) NOT NULL CHECK (ponderacion > 0 AND ponderacion <= 100),
+    escala VARCHAR(15) NOT NULL DEFAULT 'NUMERICA' CHECK (escala IN ('NUMERICA', 'LITERAL')),
+    estado VARCHAR(15) NOT NULL DEFAULT 'ABIERTA' CHECK (estado IN ('ABIERTA', 'CERRADA', 'ANULADA')),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uk_eval_materia_periodo_nombre UNIQUE (id_institucion, id_materia, periodo, nombre)
 );
 
 CREATE TABLE calificacion (
@@ -571,8 +596,10 @@ CREATE TABLE calificacion_cambio (
     fecha_cambio TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_evaluacion_institucion_asignacion ON evaluacion (id_institucion, id_asignacion_docente, periodo);
+CREATE INDEX idx_evaluacion_institucion_materia ON evaluacion (id_institucion, id_materia);
+CREATE INDEX idx_evaluacion_institucion_materia_periodo ON evaluacion (id_institucion, id_materia, periodo);
 CREATE INDEX idx_evaluacion_estado ON evaluacion (estado);
+CREATE INDEX idx_eval_materia_inst_materia ON evaluacion_materia (id_institucion, id_materia);
 CREATE INDEX idx_calificacion_institucion_evaluacion ON calificacion (id_institucion, id_evaluacion);
 CREATE INDEX idx_calificacion_inscripcion ON calificacion (id_inscripcion);
 CREATE INDEX idx_calificacion_cambio_calificacion ON calificacion_cambio (id_calificacion, fecha_cambio DESC);
@@ -680,7 +707,114 @@ CREATE INDEX idx_password_recovery_usuario ON password_recovery_challenge (id_us
 CREATE INDEX idx_password_recovery_expira_en ON password_recovery_challenge (expira_en DESC);
 
 -- =========================================================
--- 12. TRIGGERS DE actualizado_en
+-- 12. CALIFICACIONES TRIMESTRALES — Sprint 2 (HU-S2-18)
+--     Modelo Bolivia: SER / SABER / HACER / AUTOEVALUACIÓN
+-- =========================================================
+
+CREATE TABLE periodo_trimestral (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_institucion UUID NOT NULL REFERENCES institucion(id) ON DELETE CASCADE,
+    id_gestion_academica UUID NOT NULL REFERENCES gestion_academica(id) ON DELETE CASCADE,
+    numero_trimestre INTEGER NOT NULL CHECK (numero_trimestre BETWEEN 1 AND 3),
+    estado VARCHAR(20) NOT NULL DEFAULT 'ABIERTO' CHECK (estado IN ('ABIERTO','EN_CIERRE','CERRADO','REABIERTO')),
+    fecha_cierre TIMESTAMPTZ NULL,
+    justificacion_cierre VARCHAR(500) NULL,
+    id_usuario_cierre UUID NULL REFERENCES usuario(id) ON DELETE SET NULL,
+    fecha_reapertura TIMESTAMPTZ NULL,
+    justificacion_reapertura VARCHAR(500) NULL,
+    id_usuario_reapertura UUID NULL REFERENCES usuario(id) ON DELETE SET NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_periodo_trimestral_gestion_numero UNIQUE (id_institucion, id_gestion_academica, numero_trimestre)
+);
+
+CREATE TABLE actividad_evaluativa (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_institucion UUID NOT NULL REFERENCES institucion(id) ON DELETE CASCADE,
+    id_periodo_trimestral UUID NOT NULL REFERENCES periodo_trimestral(id) ON DELETE CASCADE,
+    id_gestion_academica UUID NOT NULL REFERENCES gestion_academica(id) ON DELETE CASCADE,
+    id_curso UUID NOT NULL REFERENCES curso(id) ON DELETE CASCADE,
+    id_paralelo UUID NOT NULL REFERENCES paralelo(id) ON DELETE CASCADE,
+    id_materia UUID NOT NULL REFERENCES materia(id) ON DELETE CASCADE,
+    id_docente UUID NOT NULL REFERENCES docente(id) ON DELETE CASCADE,
+    nombre_actividad VARCHAR(150) NOT NULL,
+    tipo_actividad VARCHAR(30) NOT NULL,
+    dimension VARCHAR(15) NOT NULL CHECK (dimension IN ('SABER','HACER')),
+    puntaje_maximo INTEGER NOT NULL CHECK (puntaje_maximo IN (40,45)),
+    fecha_actividad TIMESTAMPTZ NOT NULL,
+    descripcion VARCHAR(1000) NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'BORRADOR' CHECK (estado IN ('BORRADOR','PUBLICADA','CERRADA')),
+    publicado_en TIMESTAMPTZ NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_actividad_evaluativa_periodo_nombre UNIQUE (id_institucion, id_periodo_trimestral, nombre_actividad)
+);
+
+CREATE TABLE calificacion_actividad (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_institucion UUID NOT NULL REFERENCES institucion(id) ON DELETE CASCADE,
+    id_actividad UUID NOT NULL REFERENCES actividad_evaluativa(id) ON DELETE CASCADE,
+    id_estudiante UUID NOT NULL REFERENCES estudiante(id) ON DELETE CASCADE,
+    nota_obtenida NUMERIC(5,2) NULL,
+    observacion VARCHAR(500) NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE','REGISTRADA','PUBLICADA','MODIFICADA')),
+    id_usuario_registro UUID NULL REFERENCES usuario(id) ON DELETE SET NULL,
+    id_usuario_modificacion UUID NULL REFERENCES usuario(id) ON DELETE SET NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_calificacion_actividad_estudiante UNIQUE (id_actividad, id_estudiante)
+);
+
+CREATE TABLE calificacion_ser (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_institucion UUID NOT NULL REFERENCES institucion(id) ON DELETE CASCADE,
+    id_trimestre UUID NOT NULL REFERENCES periodo_trimestral(id) ON DELETE CASCADE,
+    id_gestion_academica UUID NOT NULL REFERENCES gestion_academica(id) ON DELETE CASCADE,
+    id_curso UUID NOT NULL REFERENCES curso(id) ON DELETE CASCADE,
+    id_paralelo UUID NOT NULL REFERENCES paralelo(id) ON DELETE CASCADE,
+    id_materia UUID NOT NULL REFERENCES materia(id) ON DELETE CASCADE,
+    id_docente UUID NOT NULL REFERENCES docente(id) ON DELETE CASCADE,
+    id_estudiante UUID NOT NULL REFERENCES estudiante(id) ON DELETE CASCADE,
+    nota_ser NUMERIC(5,2) NOT NULL CHECK (nota_ser BETWEEN 0 AND 10),
+    observacion VARCHAR(500) NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'REGISTRADA' CHECK (estado IN ('PENDIENTE','REGISTRADA','PUBLICADA','MODIFICADA')),
+    id_usuario_registro UUID NULL REFERENCES usuario(id) ON DELETE SET NULL,
+    id_usuario_modificacion UUID NULL REFERENCES usuario(id) ON DELETE SET NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_calificacion_ser UNIQUE (id_estudiante, id_materia, id_trimestre, id_gestion_academica)
+);
+
+CREATE TABLE autoevaluacion_trimestral (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_institucion UUID NOT NULL REFERENCES institucion(id) ON DELETE CASCADE,
+    id_trimestre UUID NOT NULL REFERENCES periodo_trimestral(id) ON DELETE CASCADE,
+    id_gestion_academica UUID NOT NULL REFERENCES gestion_academica(id) ON DELETE CASCADE,
+    id_materia UUID NOT NULL REFERENCES materia(id) ON DELETE CASCADE,
+    id_estudiante UUID NOT NULL REFERENCES estudiante(id) ON DELETE CASCADE,
+    nota_autoevaluacion NUMERIC(5,2) NOT NULL CHECK (nota_autoevaluacion BETWEEN 0 AND 5),
+    comentario VARCHAR(1000) NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE','REGISTRADA','PUBLICADA')),
+    id_usuario_registro UUID NULL REFERENCES usuario(id) ON DELETE SET NULL,
+    id_usuario_modificacion UUID NULL REFERENCES usuario(id) ON DELETE SET NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_autoevaluacion_trimestral UNIQUE (id_estudiante, id_materia, id_trimestre, id_gestion_academica)
+);
+
+CREATE INDEX idx_periodo_trimestral_institucion_gestion
+    ON periodo_trimestral (id_institucion, id_gestion_academica, numero_trimestre);
+CREATE INDEX idx_actividad_evaluativa_periodo_dimension
+    ON actividad_evaluativa (id_institucion, id_periodo_trimestral, dimension, estado);
+CREATE INDEX idx_calificacion_actividad_actividad
+    ON calificacion_actividad (id_actividad, id_estudiante);
+CREATE INDEX idx_calificacion_ser_periodo
+    ON calificacion_ser (id_institucion, id_gestion_academica, id_trimestre, id_materia);
+CREATE INDEX idx_autoevaluacion_trimestral_periodo
+    ON autoevaluacion_trimestral (id_institucion, id_gestion_academica, id_trimestre, id_materia);
+
+-- =========================================================
+-- 13. TRIGGERS DE actualizado_en
 -- =========================================================
 
 CREATE TRIGGER trg_institucion_actualizado_en BEFORE UPDATE ON institucion FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
@@ -707,11 +841,17 @@ CREATE TRIGGER trg_archivo_referencia_actualizado_en BEFORE UPDATE ON sia.archiv
 CREATE TRIGGER trg_asistencia_registro_actualizado_en BEFORE UPDATE ON asistencia_registro FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
 CREATE TRIGGER trg_asistencia_detalle_actualizado_en BEFORE UPDATE ON asistencia_detalle FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
 CREATE TRIGGER trg_evaluacion_actualizado_en BEFORE UPDATE ON evaluacion FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
+CREATE TRIGGER trg_evaluacion_materia_actualizado_en BEFORE UPDATE ON evaluacion_materia FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
 CREATE TRIGGER trg_calificacion_actualizado_en BEFORE UPDATE ON calificacion FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
 CREATE TRIGGER trg_horario_clase_actualizado_en BEFORE UPDATE ON sia.horario_clase FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
+CREATE TRIGGER trg_periodo_trimestral_actualizado_en BEFORE UPDATE ON periodo_trimestral FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
+CREATE TRIGGER trg_actividad_evaluativa_actualizado_en BEFORE UPDATE ON actividad_evaluativa FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
+CREATE TRIGGER trg_calificacion_actividad_actualizado_en BEFORE UPDATE ON calificacion_actividad FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
+CREATE TRIGGER trg_calificacion_ser_actualizado_en BEFORE UPDATE ON calificacion_ser FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
+CREATE TRIGGER trg_autoevaluacion_trimestral_actualizado_en BEFORE UPDATE ON autoevaluacion_trimestral FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
 
 -- =========================================================
--- 13. DATOS INICIALES — roles, permisos
+-- 14. DATOS INICIALES — roles, permisos
 -- =========================================================
 
 INSERT INTO permiso (codigo, nombre, modulo, accion, descripcion)
@@ -765,7 +905,7 @@ WHERE r.codigo = 'DOCENTE'
 ON CONFLICT (id_rol, id_permiso) DO NOTHING;
 
 -- =========================================================
--- 14. SPRINT ESPECIAL — PLANES, SaaS Y MÓDULOS
+-- 15. SPRINT ESPECIAL — PLANES, SaaS Y MÓDULOS
 -- =========================================================
 
 CREATE TABLE IF NOT EXISTS plan_suscripcion (
@@ -1024,7 +1164,7 @@ CREATE OR REPLACE TRIGGER trg_solicitud_onboarding_actualizado_en
     BEFORE UPDATE ON solicitud_onboarding FOR EACH ROW EXECUTE FUNCTION fn_actualizar_actualizado_en();
 
 -- =========================================================
--- 15. DATOS SEMILLA — Planes y módulos del sistema
+-- 16. DATOS SEMILLA — Planes y módulos del sistema
 -- =========================================================
 
 INSERT INTO plan_suscripcion (codigo, nombre, descripcion, max_usuarios, max_almacenamiento_mb, precio_mensual, estado)

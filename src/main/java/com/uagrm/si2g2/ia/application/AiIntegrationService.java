@@ -3,6 +3,8 @@ package com.uagrm.si2g2.ia.application;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uagrm.si2g2.common.dto.ApiResponse;
+import com.uagrm.si2g2.ia.dto.ConsultaNaturalIaRequest;
+import com.uagrm.si2g2.ia.dto.ConsultaNaturalIaResponse;
 import com.uagrm.si2g2.ia.dto.FiltroReporteDto;
 import com.uagrm.si2g2.ia.dto.InterpretacionIaRequest;
 import com.uagrm.si2g2.ia.dto.InterpretacionIaResponse;
@@ -124,6 +126,48 @@ public class AiIntegrationService {
         } catch (RestClientResponseException ex) {
             log.error("[IA] interpretarConsulta FAILED — {}", ex.getMessage());
             throw new RuntimeException("Error al interpretar consulta con IA: " + ex.getMessage(), ex);
+        }
+    }
+
+    // ── Consulta natural → SQL → resultados ─────────────────────────────────
+
+    /**
+     * Llama a FastAPI POST /api/ia/reporte/consulta-natural.
+     * El id_institucion se extrae del JWT en FastAPI (no viaja en el cuerpo).
+     *
+     * @param request    consulta en lenguaje natural + límite de filas
+     * @param authHeader JWT del usuario ("Authorization: Bearer <token>")
+     */
+    public ConsultaNaturalIaResponse consultaNatural(
+            ConsultaNaturalIaRequest request,
+            String authHeader) {
+
+        log.info("[IA] consultaNatural — consulta='{}' → {}", request.consulta(), fastapiBaseUrl);
+        long start = System.currentTimeMillis();
+
+        try {
+            Map<?, ?> body = client().post()
+                    .uri("/api/ia/reporte/consulta-natural")
+                    .header("Authorization", authHeader)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, (req, res) -> {
+                        throw new RuntimeException("FastAPI error " + res.getStatusCode());
+                    })
+                    .body(Map.class);
+
+            Map<String, Object> data = extractDataAsMap(body);
+            ConsultaNaturalIaResponse response =
+                    objectMapper.convertValue(data, ConsultaNaturalIaResponse.class);
+
+            log.info("[IA] consultaNatural OK — {} filas, {} ms",
+                    response.total(), System.currentTimeMillis() - start);
+            return response;
+
+        } catch (RestClientResponseException ex) {
+            log.error("[IA] consultaNatural FAILED — {}", ex.getMessage());
+            throw new RuntimeException("Error al ejecutar consulta natural con IA: " + ex.getMessage(), ex);
         }
     }
 

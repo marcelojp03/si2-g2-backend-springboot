@@ -2,6 +2,8 @@ package com.uagrm.si2g2.ia.api;
 
 import com.uagrm.si2g2.common.dto.ApiResponse;
 import com.uagrm.si2g2.ia.application.AiIntegrationService;
+import com.uagrm.si2g2.ia.dto.ConsultaNaturalIaRequest;
+import com.uagrm.si2g2.ia.dto.ConsultaNaturalIaResponse;
 import com.uagrm.si2g2.ia.dto.InterpretacionIaRequest;
 import com.uagrm.si2g2.ia.dto.InterpretacionIaResponse;
 import com.uagrm.si2g2.ia.dto.RiesgoEstudianteRequest;
@@ -59,5 +61,21 @@ public class AiController {
         InterpretacionIaResponse response = aiService.interpretarConsulta(request, authHeader);
         return ResponseEntity.ok(
                 ApiResponse.ok("Consulta interpretada correctamente", response));
+    }
+
+    /**
+     * Ejecuta una consulta en lenguaje natural: la IA genera SQL, lo ejecuta
+     * contra la BD multi-tenant y retorna las filas resultantes.
+     * Roles permitidos: ADMIN_INSTITUCION, DIRECTOR, SECRETARIO, SUPER_ADMIN.
+     */
+    @PostMapping("/reporte/consulta-natural")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN_INSTITUCION','ROLE_DIRECTOR','ROLE_SECRETARIO','ROLE_SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<ConsultaNaturalIaResponse>> consultaNatural(
+            @Valid @RequestBody ConsultaNaturalIaRequest request,
+            @RequestHeader("Authorization") String authHeader) {
+
+        ConsultaNaturalIaResponse response = aiService.consultaNatural(request, authHeader);
+        return ResponseEntity.ok(
+                ApiResponse.ok("Consulta ejecutada correctamente", response));
     }
 }
