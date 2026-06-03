@@ -263,6 +263,13 @@ public class CalificacionController {
                 trimestralService.cambiarEstadoActividad(id, estado)));
     }
 
+    @DeleteMapping("/trimestres/actividades/{id}")
+    @PreAuthorize("hasAnyAuthority('CALIFICACIONES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
+    public ResponseEntity<ApiResponse<Void>> eliminarActividadTrimestral(@PathVariable UUID id) {
+        trimestralService.eliminarActividad(id);
+        return ResponseEntity.ok(ApiResponse.ok("Actividad trimestral eliminada", null));
+    }
+
     @GetMapping("/trimestres/actividades/{id}/calificaciones")
     @PreAuthorize("hasAnyAuthority('CALIFICACIONES_READ','CALIFICACIONES_WRITE','CALIFICACIONES_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<List<CalificacionActividadResponse>>> listarCalificacionesActividadTrimestral(

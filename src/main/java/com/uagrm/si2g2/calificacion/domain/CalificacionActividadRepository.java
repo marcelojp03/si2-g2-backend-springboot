@@ -11,4 +11,6 @@ public interface CalificacionActividadRepository extends JpaRepository<Calificac
     List<CalificacionActividad> findAllByIdActividad(UUID idActividad);
 
     Optional<CalificacionActividad> findByIdActividadAndIdEstudiante(UUID idActividad, UUID idEstudiante);
+
+    boolean existsByIdActividad(UUID idActividad);
 }

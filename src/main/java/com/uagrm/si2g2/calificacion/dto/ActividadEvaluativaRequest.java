@@ -2,7 +2,6 @@ package com.uagrm.si2g2.calificacion.dto;
 
 import jakarta.validation.constraints.NotNull;
 
-import java.time.Instant;
 import java.util.UUID;
 
 public record ActividadEvaluativaRequest(
@@ -15,7 +14,7 @@ public record ActividadEvaluativaRequest(
         @NotNull String nombreActividad,
         @NotNull String tipoActividad,
         @NotNull String dimension,
-        Instant fechaActividad,
+        String fechaActividad,
         String descripcion,
         String estado) {
 }
