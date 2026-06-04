@@ -112,7 +112,7 @@ public class RoleService {
                 .orElseThrow(() -> new EntityNotFoundException("Rol no encontrado: " + idRol));
 
         if (rol.isEsGlobal()) {
-            if (!SecurityUtils.currentUserHasAuthority("ROLES_WRITE")) {
+            if (!SecurityUtils.currentUserHasAuthority("ROLES_UPDATE")) {
                 throw new AccessDeniedException("No tienes permiso para modificar roles predefinidos");
             }
             if ("SUPER_ADMIN".equals(rol.getCodigo())) {
@@ -253,11 +253,11 @@ public class RoleService {
         if (permisos.size() != idsPermiso.size()) {
             throw new IllegalArgumentException("Uno o más permisos no existen");
         }
-        return Set.copyOf(permisos);
+        return new java.util.HashSet<>(permisos);
     }
 
     private List<RolResponse> buildInstitutionRoleList(UUID idInstitucion) {
-        boolean canWriteRoles = SecurityUtils.currentUserHasAuthority("ROLES_WRITE");
+        boolean canWriteRoles = SecurityUtils.currentUserHasAuthority("ROLES_UPDATE");
         List<RolResponse> globales = rolRepository.findAllByEsGlobalTrueAndEstadoOrderByNombreAsc("ACTIVO").stream()
                 .map(rol -> RolResponse.from(rol, isEditableGlobalRole(rol, canWriteRoles)))
                 .toList();
@@ -289,7 +289,13 @@ public class RoleService {
                 .replaceAll("[^A-Za-z0-9]+", "_")
                 .replaceAll("^_+|_+$", "")
                 .toUpperCase();
-        String suffix = idInstitucion.toString().substring(0, 8).toUpperCase();
-        return "INST_" + suffix + "_" + (slug.isBlank() ? "ROL" : slug);
+        String codigo = slug.isBlank() ? "ROL" : slug;
+
+        String existing = rolRepository.findByCodigo(codigo).map(Rol::getCodigo).orElse(null);
+        if (existing == null) return codigo;
+
+        int counter = 2;
+        while (rolRepository.findByCodigo(codigo + "_" + counter).isPresent()) counter++;
+        return codigo + "_" + counter;
     }
 }

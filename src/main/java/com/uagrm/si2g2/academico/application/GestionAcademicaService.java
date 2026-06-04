@@ -38,6 +38,8 @@ public class GestionAcademicaService {
                 .fechaInicio(request.getFechaInicio())
                 .fechaFin(request.getFechaFin())
                 .activa(request.isActiva())
+                .tipoPeriodo(request.getTipoPeriodo() != null ? request.getTipoPeriodo() : "BIMESTRAL")
+                .cantidadPeriodos(request.getCantidadPeriodos() != null ? request.getCantidadPeriodos() : 4)
                 .build();
         GestionAcademicaResponse resp = GestionAcademicaResponse.from(repository.save(g));
         auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
@@ -74,6 +76,12 @@ public class GestionAcademicaService {
         g.setFechaInicio(request.getFechaInicio());
         g.setFechaFin(request.getFechaFin());
         g.setActiva(request.isActiva());
+        if (request.getTipoPeriodo() != null) {
+            g.setTipoPeriodo(request.getTipoPeriodo());
+        }
+        if (request.getCantidadPeriodos() != null) {
+            g.setCantidadPeriodos(request.getCantidadPeriodos());
+        }
         GestionAcademicaResponse resp = GestionAcademicaResponse.from(repository.save(g));
         auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
                 "ACADEMICO", "ACTUALIZAR", "gestion_academica", id.toString(),

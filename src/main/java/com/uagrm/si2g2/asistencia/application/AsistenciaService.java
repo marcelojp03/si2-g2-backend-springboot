@@ -424,7 +424,7 @@ public class AsistenciaService {
         if (SecurityUtils.currentUserHasRole("ADMIN_INSTITUCION")
                 || SecurityUtils.currentUserHasRole("SUPER_ADMIN")
                 || SecurityUtils.currentUserHasRole("DIRECTOR")
-                || SecurityUtils.currentUserHasAuthority("ASISTENCIA_WRITE")) {
+                || SecurityUtils.currentUserHasAuthority("ASISTENCIA_UPDATE")) {
             return;
         }
 

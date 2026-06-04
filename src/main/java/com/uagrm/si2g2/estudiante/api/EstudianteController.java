@@ -25,33 +25,33 @@ public class EstudianteController {
     private final HistorialService historialService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('ESTUDIANTES_CREATE')")
     public ResponseEntity<ApiResponse<EstudianteResponse>> crear(@Valid @RequestBody EstudianteRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("Estudiante registrado", service.crear(request)));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('ESTUDIANTES_READ')")
     public ResponseEntity<ApiResponse<List<EstudianteResponse>>> listar() {
         return ResponseEntity.ok(ApiResponse.ok("Estudiantes", service.listar()));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('ESTUDIANTES_READ')")
     public ResponseEntity<ApiResponse<EstudianteResponse>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Estudiante", service.obtener(id)));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('ESTUDIANTES_UPDATE')")
     public ResponseEntity<ApiResponse<EstudianteResponse>> actualizar(
             @PathVariable UUID id, @Valid @RequestBody EstudianteRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Estudiante actualizado", service.actualizar(id, request)));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR') or hasAuthority('ESTUDIANTES_DELETE')")
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
         service.eliminar(id);
         return ResponseEntity.ok(ApiResponse.ok("Estudiante desactivado", null));

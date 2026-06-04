@@ -22,7 +22,7 @@ public class AsignacionDocenteController {
     private final AsignacionDocenteService service;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR') or hasAuthority('ASIGNACIONES_CREATE')")
     public ResponseEntity<ApiResponse<AsignacionDocenteResponse>> asignar(
             @Valid @RequestBody AsignacionDocenteRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -30,7 +30,7 @@ public class AsignacionDocenteController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('ASIGNACIONES_READ')")
     public ResponseEntity<ApiResponse<List<AsignacionDocenteResponse>>> listar(
             @RequestParam(required = false) UUID idDocente,
             @RequestParam(required = false) UUID idGestion,
@@ -40,13 +40,13 @@ public class AsignacionDocenteController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('ASIGNACIONES_READ')")
     public ResponseEntity<ApiResponse<AsignacionDocenteResponse>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Asignación", service.obtener(id)));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR') or hasAuthority('ASIGNACIONES_DELETE')")
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
         service.eliminar(id);
         return ResponseEntity.ok(ApiResponse.ok("Asignación eliminada", null));

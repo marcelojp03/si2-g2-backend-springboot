@@ -40,4 +40,12 @@ public class GestionAcademica extends BaseEntity {
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 15)
     protected String estado = "ACTIVA";
+
+    @Builder.Default
+    @Column(name = "tipo_periodo", length = 20)
+    private String tipoPeriodo = "BIMESTRAL";
+
+    @Builder.Default
+    @Column(name = "cantidad_periodos")
+    private Integer cantidadPeriodos = 4;
 }

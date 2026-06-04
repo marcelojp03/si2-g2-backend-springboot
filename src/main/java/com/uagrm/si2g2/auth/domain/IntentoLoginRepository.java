@@ -23,7 +23,7 @@ public interface IntentoLoginRepository extends JpaRepository<IntentoLogin, UUID
     @Query("""
             SELECT i FROM IntentoLogin i
             WHERE (:idInstitucion IS NULL OR i.idInstitucion = :idInstitucion)
-              AND (:correo IS NULL OR LOWER(i.correo) LIKE LOWER(CONCAT('%', :correo, '%')))
+              AND LOWER(i.correo) LIKE LOWER(CONCAT('%', :correo, '%'))
               AND (:soloFallos = false OR i.exito = false)
               AND i.fechaIntento >= :desde
               AND i.fechaIntento <= :hasta

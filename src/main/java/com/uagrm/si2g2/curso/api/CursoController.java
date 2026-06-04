@@ -22,33 +22,33 @@ public class CursoController {
     private final CursoService service;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR') or hasAuthority('CURSOS_CREATE')")
     public ResponseEntity<ApiResponse<CursoResponse>> crear(@Valid @RequestBody CursoRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("Curso creado", service.crear(request)));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE') or hasAuthority('CURSOS_READ')")
     public ResponseEntity<ApiResponse<List<CursoResponse>>> listar() {
         return ResponseEntity.ok(ApiResponse.ok("Cursos", service.listar()));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE') or hasAuthority('CURSOS_READ')")
     public ResponseEntity<ApiResponse<CursoResponse>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Curso", service.obtener(id)));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR') or hasAuthority('CURSOS_UPDATE')")
     public ResponseEntity<ApiResponse<CursoResponse>> actualizar(
             @PathVariable UUID id, @Valid @RequestBody CursoRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Curso actualizado", service.actualizar(id, request)));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR') or hasAuthority('CURSOS_DELETE')")
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
         service.eliminar(id);
         return ResponseEntity.ok(ApiResponse.ok("Curso desactivado", null));

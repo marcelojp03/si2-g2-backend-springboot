@@ -24,7 +24,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAnyAuthority('USUARIOS_WRITE','USUARIOS_CREATE')")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         AuthResponse data = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)

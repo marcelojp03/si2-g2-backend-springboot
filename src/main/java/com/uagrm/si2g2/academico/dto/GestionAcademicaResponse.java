@@ -19,6 +19,8 @@ public class GestionAcademicaResponse {
     private LocalDate fechaFin;
     private boolean activa;
     private String estado;
+    private String tipoPeriodo;
+    private Integer cantidadPeriodos;
     private Instant creadoEn;
     private Instant actualizadoEn;
 
@@ -31,6 +33,8 @@ public class GestionAcademicaResponse {
                 .fechaFin(g.getFechaFin())
                 .activa(g.isActiva())
                 .estado(g.getEstado())
+                .tipoPeriodo(g.getTipoPeriodo())
+                .cantidadPeriodos(g.getCantidadPeriodos())
                 .creadoEn(g.getCreadoEn())
                 .actualizadoEn(g.getActualizadoEn())
                 .build();

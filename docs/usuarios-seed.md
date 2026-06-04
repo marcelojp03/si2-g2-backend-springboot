@@ -1,65 +1,140 @@
-# Usuarios de datos sinteticos
+# Usuarios del Sistema - Colegio San Miguel
 
-El backend incluye un seeder idempotente para crear datos de prueba consistentes. Se puede ejecutar varias veces sin duplicar registros.
+## Credenciales de Acceso
 
-## Ejecutar seeder
+**Contraseña para todos los usuarios:** `Colegio2026!`
 
-1. Inicia sesion como super admin:
+---
 
-```text
-superadmin@example.com
-change_me_super_admin
-```
+## Resumen de Usuarios
 
-2. Ejecuta el endpoint con el token JWT:
+| Rol | Cantidad | Prefijo Correo |
+|-----|----------|---------------|
+| SUPER_ADMIN | 1 | superadmin@example.com |
+| ADMIN_INSTITUCION | 1 | admin@sanmiguel.edu.bo |
+| DIRECTOR | 1 | director@sanmiguel.edu.bo |
+| SECRETARIO | 1 | secretaria@sanmiguel.edu.bo |
+| DOCENTE | 20 | docente.N@sanmiguel.edu.bo |
+| ESTUDIANTE | 480 | estudiante.NNNN@sanmiguel.edu.bo |
 
-```bash
-curl -X POST http://localhost:2026/api/seed/synthetic \
-  -H "Authorization: Bearer <TOKEN>"
-```
+**Total: 504 usuarios**
 
-El endpoint requiere rol `SUPER_ADMIN`.
+---
 
-## Institucion demo
+## Administradores
 
-```text
-Codigo: SEED-001
-Nombre: Colegio Demo Semilla
-Gestion: Gestion Academica Demo 2026
-```
+| Correo | Rol | Estado |
+|--------|-----|--------|
+| superadmin@example.com | SUPER_ADMIN | ACTIVO |
+| admin@sanmiguel.edu.bo | ADMIN_INSTITUCION | ACTIVO |
+| director@sanmiguel.edu.bo | DIRECTOR | ACTIVO |
+| secretaria@sanmiguel.edu.bo | SECRETARIO | ACTIVO |
 
-## Usuarios generados
+---
 
-Todos los usuarios sinteticos usan la misma contrasena:
+## Docentes (20)
 
-```text
-Demo12345!
-```
+| # | Correo | Especialidad |
+|---|--------|--------------|
+| 1 | docente.1@sanmiguel.edu.bo | Matematica |
+| 2 | docente.2@sanmiguel.edu.bo | Lenguaje |
+| 3 | docente.3@sanmiguel.edu.bo | Ciencias Naturales |
+| 4 | docente.4@sanmiguel.edu.bo | Ciencias Sociales |
+| 5 | docente.5@sanmiguel.edu.bo | Educacion Fisica |
+| 6 | docente.6@sanmiguel.edu.bo | Musica |
+| 7 | docente.7@sanmiguel.edu.bo | Artes |
+| 8 | docente.8@sanmiguel.edu.bo | Ingles |
+| 9 | docente.9@sanmiguel.edu.bo | Fisica |
+| 10 | docente.10@sanmiguel.edu.bo | Quimica |
+| 11 | docente.11@sanmiguel.edu.bo | Biologia |
+| 12 | docente.12@sanmiguel.edu.bo | Filosofia |
+| 13 | docente.13@sanmiguel.edu.bo | Informatica |
+| 14 | docente.14@sanmiguel.edu.bo | Matematica |
+| 15 | docente.15@sanmiguel.edu.bo | Lenguaje |
+| 16 | docente.16@sanmiguel.edu.bo | Ciencias Naturales |
+| 17 | docente.17@sanmiguel.edu.bo | Ciencias Sociales |
+| 18 | docente.18@sanmiguel.edu.bo | Educacion Fisica |
+| 19 | docente.19@sanmiguel.edu.bo | Musica |
+| 20 | docente.20@sanmiguel.edu.bo | Artes |
 
-| Correo | Rol | Nombre | Referencia |
-| --- | --- | --- | --- |
-| admin.demo@si2.test | ADMIN_INSTITUCION | Admin Institucion Demo | Acceso administrativo de institucion |
-| director.demo@si2.test | DIRECTOR | Daniel Quiroga | Director academico |
-| secretaria.demo@si2.test | SECRETARIO | Mariela Ribera | Secretaria academica |
-| docente.mate.demo@si2.test | DOCENTE | Ana Rojas | Docente de Matematica |
-| docente.lenguaje.demo@si2.test | DOCENTE | Carlos Mendez | Docente de Lenguaje |
-| estudiante.lucia.demo@si2.test | ESTUDIANTE | Lucia Vargas | Estudiante de 1ro Primaria A |
-| estudiante.mateo.demo@si2.test | ESTUDIANTE | Mateo Flores | Estudiante de 1ro Primaria A |
-| estudiante.sofia.demo@si2.test | ESTUDIANTE | Sofia Rojas | Estudiante de 2do Primaria A |
-| tutor.maria.demo@si2.test | TUTOR | Maria Lopez | Tutora de Lucia y Sofia |
-| tutor.jorge.demo@si2.test | TUTOR | Jorge Flores | Tutor de Mateo |
+---
 
-## Datos academicos
+## Estudiantes (480)
 
-El seeder crea o reutiliza:
+### Primeria (1ro a 6to) - Paralelos A y B
+- estudiante.0001@sanmiguel.edu.bo hasta estudiante.0240@sanmiguel.edu.bo
+- 20 estudiantes por paralelo x 6 cursos x 2 paralelos = 240 estudiantes
 
-- 1 institucion demo.
-- 1 gestion academica activa.
-- 3 cursos con paralelo A.
-- 3 materias.
-- Relaciones curso-materia.
-- 2 docentes.
-- 3 estudiantes.
-- 2 tutores.
-- Relaciones estudiante-tutor.
-- Inscripciones y asignaciones docentes.
+### Secundaria (1ro a 6to) - Paralelos A y B
+- estudiante.0241@sanmiguel.edu.bo hasta estudiante.0480@sanmiguel.edu.bo
+- 20 estudiantes por paralelo x 6 cursos x 2 paralelos = 240 estudiantes
+
+---
+
+## Datos del Colegio
+
+| Campo | Valor |
+|-------|-------|
+| Codigo | CSM-001 |
+| Nombre | Colegio San Miguel |
+| Tipo | PRIVADO |
+| Ciudad | Santa Cruz |
+| Direccion | Av. Centro #456, Santa Cruz - Bolivia |
+| Dominio | sanmiguel.edu.bo |
+| Gestion | Gestion Academica 2026 (Feb 3 - Nov 28, 2026) |
+
+---
+
+## Estructura Academica
+
+### Cursos
+- **Primaria:** PRI-1 (1ro) hasta PRI-6 (6to)
+- **Secundaria:** SEC-1 (1ro) hasta SEC-6 (6to)
+
+### Paralelos
+- 2 paralelos por curso (A y B)
+- Total: 24 paralelos
+
+### Materias
+
+**Primaria (8 materias):**
+MAT, LEN, CN, CS, VER, APV, EFD, MUS
+
+**Secundaria (12 materias):**
+MAT, LEN, CS, VER, APV, EFD, ING, TT, BIO, FIS, QUI, FIL
+
+---
+
+## Tutores (480)
+
+Un tutor principal por cada estudiante (480 tutores)
+- Correo: null (sin cuenta de usuario)
+- Parentesco: Padre/Madre segun corresponda
+
+---
+
+## Estadisticas
+
+| Entidad | Cantidad |
+|---------|----------|
+| Instituciones | 1 |
+| Usuarios | 504 |
+| Docentes | 20 |
+| Estudiantes | 480 |
+| Tutores | 480 |
+| Cursos | 12 |
+| Paralelos | 24 |
+| Materias | 14 |
+| Aulas | 24 |
+| Asignaciones docente | ~280 |
+| Inscripciones | 480 |
+
+---
+
+## Notas
+
+- El seeder crea automaticamente la estructura academica completa
+- Los estudiantes tienen usuarios con correo para acceso al sistema
+- Los tutores NO tienen usuario (solo linkage a estudiante)
+- La contrasena es la misma para todos: `Colegio2026!`
+- Para re-ejecutar el seeder, reiniciar el backend con los contenedores caidos

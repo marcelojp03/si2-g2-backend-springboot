@@ -10,15 +10,17 @@ public interface ActividadEvaluativaRepository extends JpaRepository<ActividadEv
 
     Optional<ActividadEvaluativa> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
 
-    List<ActividadEvaluativa> findAllByIdInstitucionAndIdPeriodoTrimestral(UUID idInstitucion,
-            UUID idPeriodoTrimestral);
+    List<ActividadEvaluativa> findAllByIdInstitucionAndIdPeriodoEvaluacion(UUID idInstitucion, UUID idPeriodoEvaluacion);
 
-    List<ActividadEvaluativa> findAllByIdInstitucionAndIdPeriodoTrimestralAndIdMateriaAndIdCursoAndIdParalelo(
-            UUID idInstitucion, UUID idPeriodoTrimestral, UUID idMateria, UUID idCurso, UUID idParalelo);
+    List<ActividadEvaluativa> findAllByIdInstitucionAndIdPeriodoEvaluacionAndDimension(
+            UUID idInstitucion, UUID idPeriodoEvaluacion, String dimension);
 
-    List<ActividadEvaluativa> findAllByIdInstitucionAndIdPeriodoTrimestralAndIdMateriaAndIdParalelo(
-            UUID idInstitucion, UUID idPeriodoTrimestral, UUID idMateria, UUID idParalelo);
+    List<ActividadEvaluativa> findAllByIdInstitucionAndIdPeriodoEvaluacionAndIdMateria(
+            UUID idInstitucion, UUID idPeriodoEvaluacion, UUID idMateria);
 
-    boolean existsByIdInstitucionAndIdPeriodoTrimestralAndNombreActividadIgnoreCase(
-            UUID idInstitucion, UUID idPeriodoTrimestral, String nombreActividad);
+    List<ActividadEvaluativa> findAllByIdInstitucionAndIdPeriodoEvaluacionAndIdMateriaAndDimension(
+            UUID idInstitucion, UUID idPeriodoEvaluacion, UUID idMateria, String dimension);
+
+    boolean existsByIdInstitucionAndIdPeriodoEvaluacionAndNombreActividadIgnoreCase(
+            UUID idInstitucion, UUID idPeriodoEvaluacion, String nombreActividad);
 }

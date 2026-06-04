@@ -51,7 +51,9 @@ public class IntentoLoginController {
         Instant hasta = fechaHasta != null ? fechaHasta.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC)
                 : Instant.now();
 
-        List<IntentoLogin> intentos = intentoRepo.buscarConFiltros(idInst, correo, soloFallos, desde, hasta,
+        String correoFiltro = correo == null ? "" : correo.trim();
+
+        List<IntentoLogin> intentos = intentoRepo.buscarConFiltros(idInst, correoFiltro, soloFallos, desde, hasta,
                 PageRequest.of(0, Math.min(limite, 200), Sort.by(Sort.Direction.DESC, "fechaIntento")));
 
         List<IntentoLoginResponse> resultado = intentos.stream()

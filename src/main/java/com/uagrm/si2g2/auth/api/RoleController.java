@@ -22,38 +22,38 @@ public class RoleController {
     private final RoleService roleService;
 
     @GetMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('ROLES_READ') or hasAuthority('ROLES_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('ROLES_READ')")
     public ResponseEntity<ApiResponse<List<RolResponse>>> listarRoles() {
         return ResponseEntity.ok(ApiResponse.ok("Roles", roleService.listarRolesDisponibles()));
     }
 
     @GetMapping("/asignables")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_WRITE') or hasAuthority('ROLES_READ') or hasAuthority('ROLES_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_UPDATE') or hasAuthority('ROLES_READ')")
     public ResponseEntity<ApiResponse<List<RolResponse>>> listarAsignables() {
         return ResponseEntity.ok(ApiResponse.ok("Roles asignables", roleService.listarRolesAsignables()));
     }
 
     @GetMapping("/permisos")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('ROLES_READ') or hasAuthority('ROLES_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('ROLES_READ')")
     public ResponseEntity<ApiResponse<List<PermisoResponse>>> listarPermisos() {
         return ResponseEntity.ok(ApiResponse.ok("Permisos", roleService.listarPermisos()));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('ROLES_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('ROLES_CREATE')")
     public ResponseEntity<ApiResponse<RolResponse>> crear(@Valid @RequestBody RolRequest request) {
         return ResponseEntity.status(201)
                 .body(ApiResponse.created("Rol institucional creado", roleService.crearRolInstitucional(request)));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('ROLES_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('ROLES_UPDATE')")
     public ResponseEntity<ApiResponse<RolResponse>> actualizar(@PathVariable UUID id, @Valid @RequestBody RolRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Rol institucional actualizado", roleService.actualizarRolInstitucional(id, request)));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('ROLES_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('ROLES_DELETE')")
     public ResponseEntity<ApiResponse<Void>> desactivar(@PathVariable UUID id) {
         roleService.desactivarRolInstitucional(id);
         return ResponseEntity.ok(ApiResponse.ok("Rol institucional desactivado", null));

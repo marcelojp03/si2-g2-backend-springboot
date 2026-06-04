@@ -22,19 +22,19 @@ public class UsuarioController {
     private final UsuarioService service;
 
     @GetMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_READ') or hasAuthority('USUARIOS_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_READ')")
     public ResponseEntity<ApiResponse<List<UsuarioResponse>>> listar() {
         return ResponseEntity.ok(ApiResponse.ok("Usuarios", service.listar()));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_READ') or hasAuthority('USUARIOS_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_READ')")
     public ResponseEntity<ApiResponse<UsuarioResponse>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Usuario", service.obtener(id)));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_UPDATE')")
     public ResponseEntity<ApiResponse<UsuarioResponse>> actualizar(
             @PathVariable UUID id,
             @Valid @RequestBody ActualizarUsuarioRequest request) {
@@ -42,13 +42,13 @@ public class UsuarioController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_DELETE')")
     public ResponseEntity<ApiResponse<UsuarioResponse>> desactivar(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Usuario desactivado", service.desactivar(id)));
     }
 
     @PostMapping("/{id}/roles")
-    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_WRITE') or hasAuthority('ROLES_WRITE')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_UPDATE')")
     public ResponseEntity<ApiResponse<UsuarioResponse>> asignarRol(
             @PathVariable UUID id,
             @Valid @RequestBody AsignarRolRequest request) {

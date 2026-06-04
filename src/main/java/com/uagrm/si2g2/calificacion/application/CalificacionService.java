@@ -667,11 +667,11 @@ public class CalificacionService {
 
     private void validarAccesoEscritura(AsignacionDocente asignacion) {
         // Escritura global: administradores o usuarios con permiso
-        // CALIFICACIONES_WRITE.
+        // CALIFICACIONES_UPDATE.
         if (SecurityUtils.currentUserHasRole("ADMIN_INSTITUCION")
                 || SecurityUtils.currentUserHasRole("SUPER_ADMIN")
                 || SecurityUtils.currentUserHasRole("DIRECTOR")
-                || SecurityUtils.currentUserHasAuthority("CALIFICACIONES_WRITE")) {
+                || SecurityUtils.currentUserHasAuthority("CALIFICACIONES_UPDATE")) {
             return;
         }
         // Si no tiene escritura global, solo puede escribir el docente dueno.
@@ -706,11 +706,11 @@ public class CalificacionService {
 
     private void validarAccesoEscrituraMateria(UUID idMateria, UUID idInstitucion) {
         // Escritura global: administradores o usuarios con permiso
-        // CALIFICACIONES_WRITE.
+        // CALIFICACIONES_UPDATE.
         if (SecurityUtils.currentUserHasRole("ADMIN_INSTITUCION")
                 || SecurityUtils.currentUserHasRole("SUPER_ADMIN")
                 || SecurityUtils.currentUserHasRole("DIRECTOR")
-                || SecurityUtils.currentUserHasAuthority("CALIFICACIONES_WRITE")) {
+                || SecurityUtils.currentUserHasAuthority("CALIFICACIONES_UPDATE")) {
             return;
         }
         // Si no tiene escritura global, debe tener asignación en esa materia.

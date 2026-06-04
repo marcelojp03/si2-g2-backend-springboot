@@ -26,33 +26,33 @@ public class TutorController {
     private final EstudianteTutorService estudianteTutorService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('TUTORES_CREATE')")
     public ResponseEntity<ApiResponse<TutorResponse>> crear(@Valid @RequestBody TutorRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("Tutor registrado", tutorService.crear(request)));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('TUTORES_READ')")
     public ResponseEntity<ApiResponse<List<TutorResponse>>> listar() {
         return ResponseEntity.ok(ApiResponse.ok("Tutores", tutorService.listar()));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('TUTORES_READ')")
     public ResponseEntity<ApiResponse<TutorResponse>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Tutor", tutorService.obtener(id)));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('TUTORES_UPDATE')")
     public ResponseEntity<ApiResponse<TutorResponse>> actualizar(
             @PathVariable UUID id, @Valid @RequestBody TutorRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Tutor actualizado", tutorService.actualizar(id, request)));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR') or hasAuthority('TUTORES_DELETE')")
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
         tutorService.eliminar(id);
         return ResponseEntity.ok(ApiResponse.ok("Tutor desactivado", null));
@@ -61,7 +61,7 @@ public class TutorController {
     // --- Vínculos estudiante-tutor ---
 
     @PostMapping("/estudiantes/{idEstudiante}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','SECRETARIO') or hasAuthority('TUTORES_UPDATE')")
     public ResponseEntity<ApiResponse<EstudianteTutorResponse>> vincular(
             @PathVariable UUID idEstudiante,
             @Valid @RequestBody EstudianteTutorRequest request) {
@@ -71,7 +71,7 @@ public class TutorController {
     }
 
     @GetMapping("/estudiantes/{idEstudiante}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('TUTORES_READ')")
     public ResponseEntity<ApiResponse<List<EstudianteTutorResponse>>> listarPorEstudiante(
             @PathVariable UUID idEstudiante) {
         return ResponseEntity.ok(ApiResponse.ok("Tutores del estudiante",
@@ -79,7 +79,7 @@ public class TutorController {
     }
 
     @DeleteMapping("/estudiantes/{idEstudiante}/{idTutor}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','SECRETARIO') or hasAuthority('TUTORES_UPDATE')")
     public ResponseEntity<ApiResponse<Void>> desvincular(
             @PathVariable UUID idEstudiante,
             @PathVariable UUID idTutor) {

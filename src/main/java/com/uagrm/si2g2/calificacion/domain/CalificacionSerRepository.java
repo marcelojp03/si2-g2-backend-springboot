@@ -8,9 +8,12 @@ import java.util.UUID;
 
 public interface CalificacionSerRepository extends JpaRepository<CalificacionSer, UUID> {
 
-    Optional<CalificacionSer> findByIdInstitucionAndIdGestionAcademicaAndIdTrimestreAndIdMateriaAndIdEstudiante(
-            UUID idInstitucion, UUID idGestionAcademica, UUID idTrimestre, UUID idMateria, UUID idEstudiante);
+    Optional<CalificacionSer> findByIdInstitucionAndIdPeriodoEvaluacionAndIdMateriaAndIdEstudiante(
+            UUID idInstitucion, UUID idPeriodoEvaluacion, UUID idMateria, UUID idEstudiante);
 
-    List<CalificacionSer> findAllByIdInstitucionAndIdGestionAcademicaAndIdTrimestreAndIdMateria(
-            UUID idInstitucion, UUID idGestionAcademica, UUID idTrimestre, UUID idMateria);
+    List<CalificacionSer> findAllByIdInstitucionAndIdPeriodoEvaluacionAndIdMateria(
+            UUID idInstitucion, UUID idPeriodoEvaluacion, UUID idMateria);
+
+    Optional<CalificacionSer> findByIdPeriodoEvaluacionAndIdEstudianteAndIdMateria(
+            UUID idPeriodoEvaluacion, UUID idEstudiante, UUID idMateria);
 }

@@ -12,5 +12,13 @@ public interface CalificacionActividadRepository extends JpaRepository<Calificac
 
     Optional<CalificacionActividad> findByIdActividadAndIdEstudiante(UUID idActividad, UUID idEstudiante);
 
+<<<<<<< HEAD
     boolean existsByIdActividad(UUID idActividad);
 }
+=======
+    List<CalificacionActividad> findAllByIdActividadAndIdEstudianteIn(UUID idActividad, List<UUID> idEstudiantes);
+
+    Optional<CalificacionActividad> findByIdInstitucionAndIdActividadAndIdEstudiante(
+            UUID idInstitucion, UUID idActividad, UUID idEstudiante);
+}
+>>>>>>> d46e179 (feat: dimensiones dinámicas, validación de períodos, permisos granulares, seed sintético)
