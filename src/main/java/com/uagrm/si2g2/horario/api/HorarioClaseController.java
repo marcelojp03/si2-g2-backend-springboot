@@ -30,20 +30,20 @@ public class HorarioClaseController {
     private final HorarioClaseService service;
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('OPERACION_READ','OPERACION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAuthority('HORARIOS_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
     public ResponseEntity<ApiResponse<List<HorarioClaseResponse>>> listar(
             @RequestParam UUID idInstitucion) {
         return ResponseEntity.ok(ApiResponse.ok("Horarios", service.listarActivos(idInstitucion)));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('OPERACION_READ','OPERACION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAuthority('HORARIOS_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
     public ResponseEntity<ApiResponse<HorarioClaseResponse>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Horario", service.obtenerPorId(id)));
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('OPERACION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyAuthority('HORARIOS_CREATE','HORARIOS_UPDATE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
     public ResponseEntity<ApiResponse<HorarioClaseResponse>> crear(
             @Valid @RequestBody HorarioClaseRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -51,7 +51,7 @@ public class HorarioClaseController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('OPERACION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyAuthority('HORARIOS_CREATE','HORARIOS_UPDATE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
     public ResponseEntity<ApiResponse<HorarioClaseResponse>> actualizar(
             @PathVariable UUID id,
             @Valid @RequestBody HorarioClaseRequest request) {
@@ -59,14 +59,14 @@ public class HorarioClaseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('OPERACION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAuthority('HORARIOS_DELETE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
         service.eliminar(id);
         return ResponseEntity.ok(ApiResponse.ok("Horario desactivado", null));
     }
 
     @GetMapping("/asignacion/{idAsignacionDocente}")
-    @PreAuthorize("hasAnyAuthority('OPERACION_READ','OPERACION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAuthority('HORARIOS_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
     public ResponseEntity<ApiResponse<List<HorarioClaseResponse>>> listarPorAsignacionDocente(
             @PathVariable UUID idAsignacionDocente) {
         return ResponseEntity.ok(ApiResponse.ok("Horarios por asignacion",
@@ -74,7 +74,7 @@ public class HorarioClaseController {
     }
 
     @GetMapping("/aula/{idAula}")
-    @PreAuthorize("hasAnyAuthority('OPERACION_READ','OPERACION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAuthority('HORARIOS_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
     public ResponseEntity<ApiResponse<List<HorarioClaseResponse>>> listarPorAula(
             @PathVariable UUID idAula) {
         return ResponseEntity.ok(ApiResponse.ok("Horarios por aula", service.listarPorAula(idAula)));

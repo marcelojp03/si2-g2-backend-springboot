@@ -34,7 +34,7 @@ public class CalificacionActividad {
     @Column(name = "nota_obtenida", precision = 5, scale = 2)
     private BigDecimal notaObtenida;
 
-    @Column(name = "observacion", length = 500)
+    @Column(name = "observacion", columnDefinition = "TEXT")
     private String observacion;
 
     @Builder.Default

@@ -22,7 +22,7 @@ public class CursoMateriaController {
     private final CursoMateriaService service;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR') or hasAuthority('MATERIAS_CREATE')")
     public ResponseEntity<ApiResponse<CursoMateriaResponse>> asignar(
             @PathVariable UUID idCurso,
             @Valid @RequestBody CursoMateriaRequest request) {
@@ -31,13 +31,13 @@ public class CursoMateriaController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE') or hasAuthority('MATERIAS_READ')")
     public ResponseEntity<ApiResponse<List<CursoMateriaResponse>>> listar(@PathVariable UUID idCurso) {
         return ResponseEntity.ok(ApiResponse.ok("Materias del curso", service.listarPorCurso(idCurso)));
     }
 
     @DeleteMapping("/{idMateria}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR') or hasAuthority('MATERIAS_DELETE')")
     public ResponseEntity<ApiResponse<Void>> desasignar(
             @PathVariable UUID idCurso,
             @PathVariable UUID idMateria) {

@@ -22,14 +22,14 @@ public class AulaController {
     private final AulaService service;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('GESTION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAuthority('AULAS_CREATE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
     public ResponseEntity<ApiResponse<AulaResponse>> crear(@Valid @RequestBody AulaRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("Aula creada", service.crear(request)));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('GESTION_READ','GESTION_WRITE','OPERACION_READ','OPERACION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAuthority('AULAS_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
     public ResponseEntity<ApiResponse<List<AulaResponse>>> listar(
             @RequestParam(required = false) String estado,
             @RequestParam(required = false) Integer capacidadMin,
@@ -40,13 +40,13 @@ public class AulaController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('GESTION_READ','GESTION_WRITE','OPERACION_READ','OPERACION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAuthority('AULAS_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
     public ResponseEntity<ApiResponse<AulaResponse>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Aula", service.obtener(id)));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('GESTION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAuthority('AULAS_UPDATE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
     public ResponseEntity<ApiResponse<AulaResponse>> actualizar(
             @PathVariable UUID id,
             @Valid @RequestBody AulaRequest request) {
@@ -54,7 +54,7 @@ public class AulaController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('GESTION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    @PreAuthorize("hasAuthority('AULAS_DELETE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
         service.eliminar(id);
         return ResponseEntity.ok(ApiResponse.ok("Aula desactivada", null));

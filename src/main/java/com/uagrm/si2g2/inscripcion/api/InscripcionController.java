@@ -22,7 +22,7 @@ public class InscripcionController {
     private final InscripcionService service;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('INSCRIPCIONES_CREATE')")
     public ResponseEntity<ApiResponse<InscripcionResponse>> inscribir(
             @Valid @RequestBody InscripcionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -30,7 +30,7 @@ public class InscripcionController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('INSCRIPCIONES_READ')")
     public ResponseEntity<ApiResponse<List<InscripcionResponse>>> listar(
             @RequestParam(required = false) UUID idEstudiante,
             @RequestParam(required = false) UUID idGestion,
@@ -40,13 +40,13 @@ public class InscripcionController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('INSCRIPCIONES_READ')")
     public ResponseEntity<ApiResponse<InscripcionResponse>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Inscripción", service.obtener(id)));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','SECRETARIO')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','SECRETARIO') or hasAuthority('INSCRIPCIONES_DELETE')")
     public ResponseEntity<ApiResponse<Void>> anular(@PathVariable UUID id) {
         service.anular(id);
         return ResponseEntity.ok(ApiResponse.ok("Inscripción anulada", null));

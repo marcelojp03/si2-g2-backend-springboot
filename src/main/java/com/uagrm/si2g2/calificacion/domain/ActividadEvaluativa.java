@@ -4,11 +4,12 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
 @Table(name = "actividad_evaluativa", uniqueConstraints = @UniqueConstraint(name = "uq_actividad_evaluativa_periodo_nombre", columnNames = {
-        "id_institucion", "id_periodo_trimestral", "nombre_actividad" }))
+        "id_institucion", "id_periodo_evaluacion", "nombre_actividad" }))
 @Getter
 @Setter
 @Builder
@@ -24,17 +25,8 @@ public class ActividadEvaluativa {
     @Column(name = "id_institucion", nullable = false)
     private UUID idInstitucion;
 
-    @Column(name = "id_periodo_trimestral", nullable = false)
-    private UUID idPeriodoTrimestral;
-
-    @Column(name = "id_gestion_academica", nullable = false)
-    private UUID idGestionAcademica;
-
-    @Column(name = "id_curso", nullable = false)
-    private UUID idCurso;
-
-    @Column(name = "id_paralelo", nullable = false)
-    private UUID idParalelo;
+    @Column(name = "id_periodo_evaluacion", nullable = false)
+    private UUID idPeriodoEvaluacion;
 
     @Column(name = "id_materia", nullable = false)
     private UUID idMateria;
@@ -45,20 +37,18 @@ public class ActividadEvaluativa {
     @Column(name = "nombre_actividad", nullable = false, length = 150)
     private String nombreActividad;
 
-    @Column(name = "tipo_actividad", nullable = false, length = 30)
-    private String tipoActividad;
-
     @Column(name = "dimension", nullable = false, length = 15)
     private String dimension;
 
-    @Column(name = "puntaje_maximo", nullable = false)
-    private Integer puntajeMaximo;
-
     @Column(name = "fecha_actividad", nullable = false)
-    private Instant fechaActividad;
+    private LocalDate fechaActividad;
 
-    @Column(name = "descripcion", length = 1000)
-    private String descripcion;
+    @Column(name = "descripcion_evidencia", columnDefinition = "TEXT")
+    private String descripcionEvidencia;
+
+    @Builder.Default
+    @Column(name = "puntaje_maximo", nullable = false)
+    private Integer puntajeMaximo = 100;
 
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 20)
@@ -66,6 +56,12 @@ public class ActividadEvaluativa {
 
     @Column(name = "publicado_en")
     private Instant publicadoEn;
+
+    @Column(name = "id_usuario_registro")
+    private UUID idUsuarioRegistro;
+
+    @Column(name = "id_usuario_modificacion")
+    private UUID idUsuarioModificacion;
 
     @Column(name = "creado_en", nullable = false, updatable = false)
     private Instant creadoEn;

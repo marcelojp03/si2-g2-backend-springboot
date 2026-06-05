@@ -1,7 +1,5 @@
 package com.uagrm.si2g2.calificacion.dto;
 
-import com.uagrm.si2g2.calificacion.domain.CalificacionActividad;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -18,7 +16,7 @@ public record CalificacionActividadResponse(
         Instant creadoEn,
         Instant actualizadoEn) {
 
-    public static CalificacionActividadResponse from(CalificacionActividad calificacion) {
+    public static CalificacionActividadResponse from(com.uagrm.si2g2.calificacion.domain.CalificacionActividad calificacion) {
         return new CalificacionActividadResponse(
                 calificacion.getId(),
                 calificacion.getIdActividad(),

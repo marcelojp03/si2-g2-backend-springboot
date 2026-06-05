@@ -43,7 +43,7 @@ public class Estudiante extends BaseEntity {
     @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
 
-    @Column(name = "sexo", length = 1)
+    @Column(name = "sexo", length = 10)
     private String sexo;
 
     @Column(name = "direccion")

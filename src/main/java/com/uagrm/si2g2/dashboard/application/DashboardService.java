@@ -225,14 +225,14 @@ public class DashboardService {
                     "/paralelos", "ABIERTA"));
         }
         long docentesSinAsignacion = queryService.countDocentesSinAsignacion(idInstitucion);
-        if (docentesSinAsignacion > 0 && hasRead(user, "PERSONAS_READ", "PERSONAS_WRITE", "OPERACION_READ")) {
+        if (docentesSinAsignacion > 0 && hasRead(user, "DOCENTES_READ", "DOCENTES_UPDATE", "ASIGNACIONES_READ")) {
             alerts.add(alert("docentes_sin_asignacion", "OPERACION", "info",
                     "Docentes sin asignacion",
                     docentesSinAsignacion + " docentes activos no tienen asignación docente",
                     "/asignaciones", "ABIERTA"));
         }
         long estudiantesSinTutor = queryService.countStudentsWithoutTutor(idInstitucion);
-        if (estudiantesSinTutor > 0 && hasRead(user, "PERSONAS_READ", "PERSONAS_WRITE")) {
+        if (estudiantesSinTutor > 0 && hasRead(user, "ESTUDIANTES_READ", "ESTUDIANTES_UPDATE")) {
             alerts.add(alert("estudiantes_sin_tutor", "PERSONAS", "warn",
                     "Estudiantes sin tutor",
                     estudiantesSinTutor + " estudiantes activos no tienen tutor vinculado",
@@ -274,16 +274,16 @@ public class DashboardService {
 
     private List<DashboardAction> buildPendingActions(UUID idInstitucion, Usuario user, GestionAcademicaResponse gestionActiva) {
         List<DashboardAction> actions = new ArrayList<>();
-        if (gestionActiva == null && hasRead(user, "GESTION_WRITE")) {
+        if (gestionActiva == null && hasRead(user, "GESTIONES_UPDATE")) {
             actions.add(action("crear_gestion", "Crear gestion activa", "Completar apertura académica", "pi pi-calendar-plus", "/gestiones", "danger"));
         }
-        if (queryService.countIncompleteConfigurations(idInstitucion) > 0 && hasRead(user, "CONFIGURACION_WRITE", "CONFIGURACION_READ")) {
+        if (queryService.countIncompleteConfigurations(idInstitucion) > 0 && hasRead(user, "CONFIGURACION_UPDATE", "CONFIGURACION_READ")) {
             actions.add(action("revisar_config", "Revisar configuracion", "Completar parámetros obligatorios", "pi pi-cog", "/configuracion", "warn"));
         }
-        if (queryService.countStudentsWithoutTutor(idInstitucion) > 0 && hasRead(user, "PERSONAS_WRITE", "PERSONAS_READ")) {
+        if (queryService.countStudentsWithoutTutor(idInstitucion) > 0 && hasRead(user, "ESTUDIANTES_UPDATE", "ESTUDIANTES_READ")) {
             actions.add(action("vincular_tutores", "Vincular tutores", "Estudiantes sin responsable principal", "pi pi-users", "/tutores", "info"));
         }
-        if (queryService.countDocentesSinAsignacion(idInstitucion) > 0 && hasRead(user, "OPERACION_WRITE", "OPERACION_READ")) {
+        if (queryService.countDocentesSinAsignacion(idInstitucion) > 0 && hasRead(user, "ASIGNACIONES_UPDATE", "ASIGNACIONES_READ")) {
             actions.add(action("asignar_docentes", "Completar asignaciones", "Docentes sin materias ni paralelos", "pi pi-graduation-cap", "/asignaciones", "info"));
         }
         if (actions.isEmpty()) {
@@ -294,18 +294,18 @@ public class DashboardService {
 
     private List<DashboardAction> buildQuickActions(Usuario user) {
         List<DashboardAction> actions = new ArrayList<>();
-        if (hasRead(user, "USUARIOS_READ", "USUARIOS_WRITE")) {
+        if (hasRead(user, "USUARIOS_READ", "USUARIOS_UPDATE")) {
             actions.add(action("usuarios", "Usuarios", "Gestionar accesos", "pi pi-users", "/usuarios", "contrast"));
         }
-        if (hasRead(user, "GESTION_READ", "GESTION_WRITE")) {
+        if (hasRead(user, "GESTIONES_READ", "GESTIONES_UPDATE")) {
             actions.add(action("gestiones", "Gestiones", "Abrir o revisar periodos", "pi pi-calendar", "/gestiones", "info"));
             actions.add(action("cursos", "Cursos", "Revisar estructura académica", "pi pi-book", "/cursos", "info"));
         }
-        if (hasRead(user, "PERSONAS_READ", "PERSONAS_WRITE")) {
+        if (hasRead(user, "ESTUDIANTES_READ", "ESTUDIANTES_UPDATE")) {
             actions.add(action("estudiantes", "Estudiantes", "Padron institucional", "pi pi-user-plus", "/estudiantes", "success"));
             actions.add(action("docentes", "Docentes", "Plantel académico", "pi pi-id-card", "/docentes", "success"));
         }
-        if (hasRead(user, "OPERACION_READ", "OPERACION_WRITE")) {
+        if (hasRead(user, "INSCRIPCIONES_READ", "INSCRIPCIONES_UPDATE")) {
             actions.add(action("inscripciones", "Inscripciones", "Matricula y traslados", "pi pi-file-edit", "/inscripciones", "warn"));
             actions.add(action("asignaciones", "Asignaciones", "Docentes por materia y paralelo", "pi pi-link", "/asignaciones", "warn"));
         }

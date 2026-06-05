@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "autoevaluacion_trimestral", uniqueConstraints = @UniqueConstraint(name = "uq_autoevaluacion_trimestral", columnNames = {
-        "id_estudiante", "id_materia", "id_trimestre", "id_gestion_academica" }))
+        "id_estudiante", "id_materia", "id_periodo_evaluacion" }))
 @Getter
 @Setter
 @Builder
@@ -25,22 +25,19 @@ public class AutoevaluacionTrimestral {
     @Column(name = "id_institucion", nullable = false)
     private UUID idInstitucion;
 
-    @Column(name = "id_trimestre", nullable = false)
-    private UUID idTrimestre;
-
-    @Column(name = "id_gestion_academica", nullable = false)
-    private UUID idGestionAcademica;
-
-    @Column(name = "id_materia", nullable = false)
-    private UUID idMateria;
+    @Column(name = "id_periodo_evaluacion", nullable = false)
+    private UUID idPeriodoEvaluacion;
 
     @Column(name = "id_estudiante", nullable = false)
     private UUID idEstudiante;
 
+    @Column(name = "id_materia", nullable = false)
+    private UUID idMateria;
+
     @Column(name = "nota_autoevaluacion", nullable = false, precision = 5, scale = 2)
     private BigDecimal notaAutoevaluacion;
 
-    @Column(name = "comentario", length = 1000)
+    @Column(name = "comentario", columnDefinition = "TEXT")
     private String comentario;
 
     @Builder.Default

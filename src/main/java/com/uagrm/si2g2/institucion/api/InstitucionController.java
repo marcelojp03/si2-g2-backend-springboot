@@ -43,19 +43,19 @@ public class InstitucionController {
     }
 
     @GetMapping("/actual/configuraciones")
-    @PreAuthorize("hasAuthority('CONFIGURACION_READ') or hasAuthority('CONFIGURACION_WRITE')")
+    @PreAuthorize("hasAuthority('CONFIGURACION_READ')")
     public ResponseEntity<ApiResponse<List<ConfiguracionInstitucionResponse>>> listarConfiguracionesActuales() {
         return ResponseEntity.ok(ApiResponse.ok("Configuraciones", service.listarConfiguracionesActuales()));
     }
 
     @GetMapping("/actual/configuraciones/catalogo")
-    @PreAuthorize("hasAuthority('CONFIGURACION_READ') or hasAuthority('CONFIGURACION_WRITE')")
+    @PreAuthorize("hasAuthority('CONFIGURACION_READ')")
     public ResponseEntity<ApiResponse<List<ConfiguracionParametroResponse>>> listarCatalogoConfiguracionesActuales() {
         return ResponseEntity.ok(ApiResponse.ok("Catálogo de configuraciones", service.listarCatalogoConfiguracionesActuales()));
     }
 
     @PutMapping("/actual/configuraciones")
-    @PreAuthorize("hasAuthority('CONFIGURACION_WRITE')")
+    @PreAuthorize("hasAuthority('CONFIGURACION_UPDATE')")
     public ResponseEntity<ApiResponse<ConfiguracionInstitucionResponse>> guardarConfiguracionActual(
             @Valid @RequestBody ConfiguracionInstitucionRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Configuración guardada",
@@ -63,7 +63,7 @@ public class InstitucionController {
     }
 
     @DeleteMapping("/actual/configuraciones/{clave}")
-    @PreAuthorize("hasAuthority('CONFIGURACION_WRITE')")
+    @PreAuthorize("hasAuthority('CONFIGURACION_DELETE')")
     public ResponseEntity<ApiResponse<Void>> eliminarConfiguracionActual(@PathVariable String clave) {
         service.eliminarConfiguracionActual(clave);
         return ResponseEntity.ok(ApiResponse.ok("Configuración eliminada", null));

@@ -6,13 +6,8 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record CalificacionSerRequest(
-        @NotNull UUID idGestionAcademica,
-        @NotNull Integer trimestre,
-        @NotNull UUID idCurso,
-        @NotNull UUID idParalelo,
-        @NotNull UUID idMateria,
-        @NotNull UUID idDocente,
         @NotNull UUID idEstudiante,
+        @NotNull UUID idMateria,
         @NotNull BigDecimal notaSer,
-        String observacion) {
+        String observacionFinal) {
 }

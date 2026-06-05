@@ -8,9 +8,12 @@ import java.util.UUID;
 
 public interface AutoevaluacionTrimestralRepository extends JpaRepository<AutoevaluacionTrimestral, UUID> {
 
-    Optional<AutoevaluacionTrimestral> findByIdInstitucionAndIdGestionAcademicaAndIdTrimestreAndIdMateriaAndIdEstudiante(
-            UUID idInstitucion, UUID idGestionAcademica, UUID idTrimestre, UUID idMateria, UUID idEstudiante);
+    Optional<AutoevaluacionTrimestral> findByIdInstitucionAndIdPeriodoEvaluacionAndIdMateriaAndIdEstudiante(
+            UUID idInstitucion, UUID idPeriodoEvaluacion, UUID idMateria, UUID idEstudiante);
 
-    List<AutoevaluacionTrimestral> findAllByIdInstitucionAndIdGestionAcademicaAndIdTrimestreAndIdMateria(
-            UUID idInstitucion, UUID idGestionAcademica, UUID idTrimestre, UUID idMateria);
+    List<AutoevaluacionTrimestral> findAllByIdInstitucionAndIdPeriodoEvaluacionAndIdMateria(
+            UUID idInstitucion, UUID idPeriodoEvaluacion, UUID idMateria);
+
+    Optional<AutoevaluacionTrimestral> findByIdPeriodoEvaluacionAndIdEstudianteAndIdMateria(
+            UUID idPeriodoEvaluacion, UUID idEstudiante, UUID idMateria);
 }

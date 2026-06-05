@@ -23,6 +23,11 @@ public class GestionAcademicaRequest {
 
     private boolean activa = false;
 
+    @Size(max = 20)
+    private String tipoPeriodo = "BIMESTRAL";
+
+    private Integer cantidadPeriodos = 4;
+
     @AssertTrue(message = "La fecha de fin debe ser igual o posterior a la fecha de inicio")
     public boolean isFechasValidas() {
         if (fechaInicio == null || fechaFin == null) return true;

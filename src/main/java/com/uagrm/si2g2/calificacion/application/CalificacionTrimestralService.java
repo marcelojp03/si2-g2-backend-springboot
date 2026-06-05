@@ -32,6 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -76,11 +79,11 @@ public class CalificacionTrimestralService {
     private final AuditoriaService auditoriaService;
     private final AuditoriaQueryService auditoriaQueryService;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ActividadEvaluativaResponse> listarActividades(UUID idGestionAcademica, Integer trimestre,
             UUID idCurso, UUID idParalelo, UUID idMateria) {
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
-        PeriodoTrimestral periodo = obtenerPeriodo(idInstitucion, idGestionAcademica, trimestre, false);
+        PeriodoTrimestral periodo = obtenerPeriodo(idInstitucion, idGestionAcademica, trimestre, true);
 
         List<ActividadEvaluativa> actividades = actividadRepository
                 .findAllByIdInstitucionAndIdPeriodoTrimestral(idInstitucion, periodo.getId());
@@ -129,7 +132,7 @@ public class CalificacionTrimestralService {
                 .tipoActividad(tipoActividad)
                 .dimension(dimension)
                 .puntajeMaximo(100)
-                .fechaActividad(request.fechaActividad() != null ? request.fechaActividad() : Instant.now())
+                .fechaActividad(resolverFechaActividad(request.fechaActividad(), Instant.now()))
                 .descripcion(request.descripcion())
                 .estado(normalizarEstadoActividad(request.estado()))
                 .build();
@@ -168,8 +171,7 @@ public class CalificacionTrimestralService {
                 normalizarTexto(request.nombreActividad(), "El nombre de la actividad es obligatorio"));
         actividad.setTipoActividad(normalizarTexto(request.tipoActividad(), "El tipo de actividad es obligatorio"));
         actividad.setDimension(normalizarDimension(request.dimension()));
-        actividad.setFechaActividad(
-                request.fechaActividad() != null ? request.fechaActividad() : actividad.getFechaActividad());
+        actividad.setFechaActividad(resolverFechaActividad(request.fechaActividad(), actividad.getFechaActividad()));
         actividad.setDescripcion(request.descripcion());
         actividad.setEstado(normalizarEstadoActividad(request.estado()));
         if (ESTADO_CERRADO.equals(periodo.getEstado())) {
@@ -205,6 +207,27 @@ public class CalificacionTrimestralService {
                 "CAMBIAR_ESTADO_ACTIVIDAD", "actividad_evaluativa", saved.getId().toString(), antes,
                 snapshotActividad(saved), true, "Estado de actividad actualizado");
         return ActividadEvaluativaResponse.from(saved);
+    }
+
+    @Transactional
+    public void eliminarActividad(UUID idActividad) {
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        ActividadEvaluativa actividad = buscarActividad(idInstitucion, idActividad);
+        PeriodoTrimestral periodo = buscarPeriodo(idInstitucion, actividad.getIdPeriodoTrimestral());
+        validarPeriodoAbierto(periodo);
+        validarAccesoDocenteMateria(actividad.getIdDocente(), actividad.getIdMateria(), actividad.getIdParalelo(),
+                actividad.getIdGestionAcademica(), idInstitucion);
+
+        if (calificacionActividadRepository.existsByIdActividad(idActividad)) {
+            throw new IllegalStateException(
+                    "No se puede eliminar la actividad porque ya tiene calificaciones registradas");
+        }
+
+        Map<String, Object> antes = snapshotActividad(actividad);
+        actividadRepository.delete(actividad);
+        auditoriaService.registrarDetallado(idInstitucion, SecurityUtils.currentUserId(), MODULO,
+                "ELIMINAR_ACTIVIDAD", "actividad_evaluativa", idActividad.toString(), antes, Map.of(), true,
+                "Actividad trimestral eliminada");
     }
 
     @Transactional(readOnly = true)
@@ -317,10 +340,10 @@ public class CalificacionTrimestralService {
         return CalificacionSerResponse.from(saved);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<CalificacionSerResponse> listarSer(UUID idGestionAcademica, Integer trimestre, UUID idMateria) {
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
-        PeriodoTrimestral periodo = obtenerPeriodo(idInstitucion, idGestionAcademica, trimestre, false);
+        PeriodoTrimestral periodo = obtenerPeriodo(idInstitucion, idGestionAcademica, trimestre, true);
         return calificacionSerRepository
                 .findAllByIdInstitucionAndIdGestionAcademicaAndIdTrimestreAndIdMateria(idInstitucion,
                         idGestionAcademica, periodo.getId(), idMateria)
@@ -364,11 +387,11 @@ public class CalificacionTrimestralService {
         return AutoevaluacionTrimestralResponse.from(saved);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<AutoevaluacionTrimestralResponse> listarAutoevaluaciones(UUID idGestionAcademica, Integer trimestre,
             UUID idMateria) {
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
-        PeriodoTrimestral periodo = obtenerPeriodo(idInstitucion, idGestionAcademica, trimestre, false);
+        PeriodoTrimestral periodo = obtenerPeriodo(idInstitucion, idGestionAcademica, trimestre, true);
         return autoevaluacionRepository
                 .findAllByIdInstitucionAndIdGestionAcademicaAndIdTrimestreAndIdMateria(idInstitucion,
                         idGestionAcademica, periodo.getId(), idMateria)
@@ -799,10 +822,31 @@ public class CalificacionTrimestralService {
         }
         String normalizado = estado.trim().toUpperCase();
         if (!ESTADO_BORRADOR.equals(normalizado) && !ESTADO_ACTIVO.equals(normalizado)
+                && !ESTADO_CERRADO.equals(normalizado) && !"CERRADA".equals(normalizado)
                 && !"PUBLICADA".equals(normalizado)) {
             throw new IllegalArgumentException("Estado de actividad invalido");
         }
+        if (ESTADO_CERRADO.equals(normalizado)) {
+            return "CERRADA";
+        }
         return "PUBLICADA".equals(normalizado) ? ESTADO_ACTIVO : normalizado;
+    }
+
+    private Instant resolverFechaActividad(String fechaActividad, Instant fallback) {
+        if (fechaActividad == null || fechaActividad.isBlank()) {
+            return fallback;
+        }
+
+        String valor = fechaActividad.trim();
+        try {
+            return Instant.parse(valor);
+        } catch (DateTimeParseException ignored) {
+            try {
+                return LocalDate.parse(valor).atStartOfDay(ZoneOffset.UTC).toInstant();
+            } catch (DateTimeParseException ex) {
+                throw new IllegalArgumentException("La fecha de actividad debe tener formato ISO o yyyy-MM-dd");
+            }
+        }
     }
 
     private String normalizarTexto(String valor, String mensaje) {

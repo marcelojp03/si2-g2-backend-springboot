@@ -62,20 +62,20 @@ public class ReporteController {
     }
 
     @PostMapping("/preview")
-    @PreAuthorize("hasAnyAuthority('REPORTES_READ','REPORTES_EXPORT','REPORTES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('REPORTES_READ','REPORTES_EXPORT') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
     public ResponseEntity<ApiResponse<ReportePreviewResponse>> preview(@Valid @RequestBody ReportePreviewRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Reporte generado", service.preview(request)));
     }
 
     @PostMapping("/export/{formato}")
-    @PreAuthorize("hasAnyAuthority('REPORTES_EXPORT','REPORTES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyAuthority('REPORTES_EXPORT') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
     public ResponseEntity<byte[]> exportar(@PathVariable String formato, @Valid @RequestBody ReportePreviewRequest request) {
         ReporteService.ExportedReport report = service.exportar(request, formato);
         return fileResponse(report);
     }
 
     @PostMapping("/nl/preview")
-    @PreAuthorize("hasAnyAuthority('REPORTES_READ','REPORTES_EXPORT','REPORTES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('REPORTES_READ','REPORTES_EXPORT') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
     public ResponseEntity<ApiResponse<ReportePreviewResponse>> previewNaturalLanguage(
             @Valid @RequestBody ReporteNaturalLanguageRequest request,
             @RequestHeader("Authorization") String authHeader) {
@@ -83,7 +83,7 @@ public class ReporteController {
     }
 
     @PostMapping("/nl/export/{formato}")
-    @PreAuthorize("hasAnyAuthority('REPORTES_EXPORT','REPORTES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyAuthority('REPORTES_EXPORT') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
     public ResponseEntity<byte[]> exportarNaturalLanguage(
             @PathVariable String formato,
             @Valid @RequestBody ReporteNaturalLanguageRequest request,
@@ -92,19 +92,19 @@ public class ReporteController {
     }
 
     @GetMapping("/qbe/catalogo")
-    @PreAuthorize("hasAnyAuthority('REPORTES_READ','REPORTES_EXPORT','REPORTES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('REPORTES_READ','REPORTES_EXPORT') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
     public ResponseEntity<ApiResponse<List<QbeEntityDefinitionResponse>>> qbeCatalogo() {
         return ResponseEntity.ok(ApiResponse.ok("Catálogo QBE", qbeService.catalogo()));
     }
 
     @PostMapping("/qbe/preview")
-    @PreAuthorize("hasAnyAuthority('REPORTES_READ','REPORTES_EXPORT','REPORTES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('REPORTES_READ','REPORTES_EXPORT') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
     public ResponseEntity<ApiResponse<ReportePreviewResponse>> previewQbe(@Valid @RequestBody QbePreviewRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Reporte QBE generado", qbeService.preview(request)));
     }
 
     @PostMapping("/qbe/export/{formato}")
-    @PreAuthorize("hasAnyAuthority('REPORTES_EXPORT','REPORTES_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyAuthority('REPORTES_EXPORT') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
     public ResponseEntity<byte[]> exportarQbe(@PathVariable String formato, @Valid @RequestBody QbePreviewRequest request) {
         return fileResponse(qbeService.exportar(request, formato));
     }

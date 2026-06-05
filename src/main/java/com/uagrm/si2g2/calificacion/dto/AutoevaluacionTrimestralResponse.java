@@ -8,10 +8,9 @@ import java.util.UUID;
 
 public record AutoevaluacionTrimestralResponse(
         UUID id,
-        UUID idGestionAcademica,
-        UUID idTrimestre,
-        UUID idMateria,
+        UUID idPeriodoEvaluacion,
         UUID idEstudiante,
+        UUID idMateria,
         BigDecimal notaAutoevaluacion,
         String comentario,
         String estado,
@@ -23,10 +22,9 @@ public record AutoevaluacionTrimestralResponse(
     public static AutoevaluacionTrimestralResponse from(AutoevaluacionTrimestral autoevaluacion) {
         return new AutoevaluacionTrimestralResponse(
                 autoevaluacion.getId(),
-                autoevaluacion.getIdGestionAcademica(),
-                autoevaluacion.getIdTrimestre(),
-                autoevaluacion.getIdMateria(),
+                autoevaluacion.getIdPeriodoEvaluacion(),
                 autoevaluacion.getIdEstudiante(),
+                autoevaluacion.getIdMateria(),
                 autoevaluacion.getNotaAutoevaluacion(),
                 autoevaluacion.getComentario(),
                 autoevaluacion.getEstado(),

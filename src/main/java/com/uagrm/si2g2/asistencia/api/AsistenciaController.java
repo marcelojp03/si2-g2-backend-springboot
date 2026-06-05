@@ -26,13 +26,13 @@ public class AsistenciaController {
     private final AsistenciaService service;
 
     @GetMapping("/mis-asignaciones")
-    @PreAuthorize("hasAnyAuthority('ASISTENCIA_READ','ASISTENCIA_WRITE','ASISTENCIA_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('ASISTENCIA_READ','ASISTENCIA_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<List<AsistenciaAsignacionResponse>>> listarMisAsignaciones() {
         return ResponseEntity.ok(ApiResponse.ok("Asignaciones disponibles", service.listarMisAsignaciones()));
     }
 
     @GetMapping("/plantilla")
-    @PreAuthorize("hasAnyAuthority('ASISTENCIA_READ','ASISTENCIA_WRITE','ASISTENCIA_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('ASISTENCIA_READ','ASISTENCIA_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<AsistenciaPlantillaResponse>> obtenerPlantilla(
             @RequestParam UUID idAsignacionDocente,
             @RequestParam LocalDate fecha) {
@@ -40,7 +40,7 @@ public class AsistenciaController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ASISTENCIA_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('ASISTENCIA_CREATE','ASISTENCIA_UPDATE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<AsistenciaRegistroResponse>> guardar(
             @Valid @RequestBody AsistenciaRegistroRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -48,7 +48,7 @@ public class AsistenciaController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ASISTENCIA_READ','ASISTENCIA_WRITE','ASISTENCIA_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
+    @PreAuthorize("hasAnyAuthority('ASISTENCIA_READ','ASISTENCIA_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<AsistenciaRegistroResponse>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Asistencia", service.obtener(id)));
     }

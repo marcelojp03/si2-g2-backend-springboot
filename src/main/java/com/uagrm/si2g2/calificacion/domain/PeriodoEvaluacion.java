@@ -7,15 +7,15 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "periodo_trimestral", uniqueConstraints = @UniqueConstraint(name = "uq_periodo_trimestral_gestion_numero", columnNames = {
-        "id_institucion", "id_gestion_academica", "numero_trimestre" }))
+@Table(name = "periodo_evaluacion", uniqueConstraints = @UniqueConstraint(name = "uq_periodo_evaluacion", columnNames = {
+        "id_institucion", "id_gestion_academica", "numero_periodo" }))
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(of = "id")
-public class PeriodoTrimestral {
+public class PeriodoEvaluacion {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -27,12 +27,37 @@ public class PeriodoTrimestral {
     @Column(name = "id_gestion_academica", nullable = false)
     private UUID idGestionAcademica;
 
-    @Column(name = "numero_trimestre", nullable = false)
-    private Integer numeroTrimestre;
+    @Column(name = "numero_periodo", nullable = false)
+    private Integer numeroPeriodo;
+
+    @Column(name = "tipo_periodo", nullable = false, length = 20)
+    private String tipoPeriodo;
+
+    @Column(name = "fecha_inicio", nullable = false)
+    private java.time.LocalDate fechaInicio;
+
+    @Column(name = "fecha_fin", nullable = false)
+    private java.time.LocalDate fechaFin;
 
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 20)
     private String estado = "ABIERTO";
+
+    @Builder.Default
+    @Column(name = "peso_ser", nullable = false)
+    private Integer pesoSer = 10;
+
+    @Builder.Default
+    @Column(name = "peso_saber", nullable = false)
+    private Integer pesoSaber = 45;
+
+    @Builder.Default
+    @Column(name = "peso_hacer", nullable = false)
+    private Integer pesoHacer = 40;
+
+    @Builder.Default
+    @Column(name = "peso_auto", nullable = false)
+    private Integer pesoAuto = 5;
 
     @Column(name = "fecha_cierre")
     private Instant fechaCierre;

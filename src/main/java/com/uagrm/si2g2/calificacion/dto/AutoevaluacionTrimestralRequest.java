@@ -6,10 +6,8 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record AutoevaluacionTrimestralRequest(
-        @NotNull UUID idGestionAcademica,
-        @NotNull Integer trimestre,
-        @NotNull UUID idMateria,
         @NotNull UUID idEstudiante,
+        @NotNull UUID idMateria,
         @NotNull BigDecimal notaAutoevaluacion,
         String comentario) {
 }

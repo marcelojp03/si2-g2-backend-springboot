@@ -8,8 +8,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "calificacion_ser", uniqueConstraints = @UniqueConstraint(name = "uq_calificacion_ser_periodo_estudiante", columnNames = {
-        "id_estudiante", "id_materia", "id_trimestre", "id_gestion_academica" }))
+@Table(name = "calificacion_ser", uniqueConstraints = @UniqueConstraint(name = "uq_calificacion_ser", columnNames = {
+        "id_estudiante", "id_materia", "id_periodo_evaluacion" }))
 @Getter
 @Setter
 @Builder
@@ -25,36 +25,24 @@ public class CalificacionSer {
     @Column(name = "id_institucion", nullable = false)
     private UUID idInstitucion;
 
-    @Column(name = "id_trimestre", nullable = false)
-    private UUID idTrimestre;
-
-    @Column(name = "id_gestion_academica", nullable = false)
-    private UUID idGestionAcademica;
-
-    @Column(name = "id_curso", nullable = false)
-    private UUID idCurso;
-
-    @Column(name = "id_paralelo", nullable = false)
-    private UUID idParalelo;
-
-    @Column(name = "id_materia", nullable = false)
-    private UUID idMateria;
-
-    @Column(name = "id_docente", nullable = false)
-    private UUID idDocente;
+    @Column(name = "id_periodo_evaluacion", nullable = false)
+    private UUID idPeriodoEvaluacion;
 
     @Column(name = "id_estudiante", nullable = false)
     private UUID idEstudiante;
 
+    @Column(name = "id_materia", nullable = false)
+    private UUID idMateria;
+
     @Column(name = "nota_ser", nullable = false, precision = 5, scale = 2)
     private BigDecimal notaSer;
 
-    @Column(name = "observacion", length = 500)
-    private String observacion;
+    @Column(name = "observacion_final", columnDefinition = "TEXT")
+    private String observacionFinal;
 
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 20)
-    private String estado = "REGISTRADA";
+    private String estado = "PENDIENTE";
 
     @Column(name = "id_usuario_registro")
     private UUID idUsuarioRegistro;
