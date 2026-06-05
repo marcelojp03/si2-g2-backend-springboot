@@ -63,14 +63,14 @@ public class PagoSuscripcionService {
         PagoSuscripcion existente = pagoRepo.findFirstByIdSolicitudOrderByCreadoEnDesc(idSolicitud).orElse(null);
         if (existente != null && "PENDIENTE".equals(existente.getEstado())
                 && (existente.getFechaExpiracion() == null || !existente.getFechaExpiracion().isBefore(LocalDate.now()))
-                && existente.getQrBase64() != null && !existente.getQrBase64().isBlank()) {
+                && qrBase64Valida(existente.getQrBase64(), existente.getReferenciaExterna())) {
             log.info("[PAGO] Reutilizando QR pendiente para solicitud {}", idSolicitud);
             return PagoSuscripcionResponse.from(existente);
         }
 
         PlanSuscripcion plan = solicitud.getPlan();
         LocalDate expiracion = LocalDate.now().plusDays(7);
-        String glosa = "Plan " + plan.getNombre() + " - " + solicitud.getNombreInstitucion();
+        String glosa = plan.getNombre() + " - " + solicitud.getNombreInstitucion();
 
         QrResult qr = vpayClient.generarQr(plan.getPrecioMensual(), glosa, expiracion, idSolicitud.toString());
 
@@ -158,7 +158,7 @@ public class PagoSuscripcionService {
         }
 
         // Generar QR lazily si no existe todavía
-        if (pago.getQrBase64() == null || pago.getQrBase64().isBlank()) {
+        if (!qrBase64Valida(pago.getQrBase64(), pago.getReferenciaExterna())) {
             SolicitudOnboarding solicitud = solicitudRepo.findById(pago.getIdSolicitud())
                     .orElseThrow(() -> new EntityNotFoundException("Solicitud asociada no encontrada"));
 
@@ -181,12 +181,26 @@ public class PagoSuscripcionService {
     }
 
     /**
+     * Valida que el contenido parezca una imagen QR en base64 y no un id textual.
+     */
+    private boolean qrBase64Valida(String qrBase64, String referenciaExterna) {
+        if (qrBase64 == null || qrBase64.isBlank()) {
+            return false;
+        }
+        if (referenciaExterna != null && qrBase64.equals(referenciaExterna)) {
+            return false;
+        }
+        // Un PNG/JPEG base64 real de QR suele superar holgadamente este tamaño.
+        return qrBase64.length() > 100;
+    }
+
+    /**
      * Consulta el estado del pago desde el endpoint público de polling.
      * Si Vpay confirma el pago (PAG), activa la institución automáticamente.
      */
     @Transactional
     public EstadoPagoResponse consultarEstadoPublico(UUID tokenPago) {
-        PagoSuscripcion pago = pagoRepo.findByTokenPago(tokenPago)
+        PagoSuscripcion pago = pagoRepo.findByTokenPagoForUpdate(tokenPago)
                 .orElseThrow(() -> new EntityNotFoundException("Link de pago no válido"));
 
         if ("PAGADO".equals(pago.getEstado())) {
@@ -238,6 +252,10 @@ public class PagoSuscripcionService {
      * Genera un challenge de activación para que el nuevo admin cree su contraseña.
      */
     private void confirmarPagadoYActivar(PagoSuscripcion pago) {
+        if ("PAGADO".equals(pago.getEstado())) {
+            return;
+        }
+
         pago.setEstado("PAGADO");
         pago.setPagadoEn(Instant.now());
         pagoRepo.save(pago);

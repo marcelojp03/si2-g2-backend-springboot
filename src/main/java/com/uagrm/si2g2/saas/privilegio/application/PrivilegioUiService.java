@@ -43,13 +43,19 @@ public class PrivilegioUiService {
      */
     @Transactional(readOnly = true)
     public Map<String, Map<String, String>> obtenerMapaUsuarioActual() {
-        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
-
         // Obtiene los roles del usuario actual del contexto de seguridad
         Usuario usuario = SecurityUtils.currentUser();
         if (usuario == null) {
             return Collections.emptyMap();
         }
+
+        boolean esSuperAdmin = usuario.getRoles().stream()
+                .anyMatch(rol -> "SUPER_ADMIN".equalsIgnoreCase(rol.getCodigo()));
+        if (esSuperAdmin && usuario.getIdInstitucion() == null) {
+            return Collections.emptyMap();
+        }
+
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
         List<UUID> idsRoles = usuario.getRoles().stream().map(Rol::getId).toList();
 
         List<PrivilegioUi> privilegios = idsRoles.stream()

@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -116,19 +117,24 @@ public class VpayClient {
                                          LocalDate expiracion, String additionalData) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("operation", "VTO041");
-        body.put("user", user);
-        body.put("company", company);
         body.put("header", List.of(
-                attr("amount", monto.toPlainString()),
                 attr("currency", "BOB"),
                 attr("gloss", glosa),
-                attr("expiration", expiracion != null ? expiracion.toString() : ""),
-                attr("account", destinationAccount),
-                attr("bank", bank),
-                attr("additionalData", additionalData != null ? additionalData : "")
+            attr("amount", monto.toPlainString()),
+            attr("singleUse", "true"),
+            attr("expirationDate", expiracion != null ? expiracion.toString() : ""),
+            attr("additionalData", additionalData != null ? additionalData : ""),
+            attr("destinationAccountId", destinationAccount),
+            attr("bank", bank),
+            attr("user", user),
+            attr("company", company)
         ));
+        body.put("detail", List.of(Map.of("items", List.of())));
 
         try {
+            String bodyJson = objectMapper.writeValueAsString(body);
+            log.info("[VPAY][REQUEST] PUT {}/api/transactions/doPayment — body: {}", baseUrl, bodyJson);
+
             String raw = vpayClient().put()
                     .uri("/api/transactions/doPayment")
                     .header("Authorization", token)
@@ -137,11 +143,23 @@ public class VpayClient {
                     .retrieve()
                     .body(String.class);
 
-            JsonNode root = objectMapper.readTree(raw);
-            JsonNode response = firstResponseList(root);
+            log.info("[VPAY][RESPONSE] raw: {}", raw);
 
-            String idQr = findIdentificatorByCodeHint(response, "id", "qr");
-            String qrBase64 = findIdentificatorByCodeHint(response, "image", "qr", "base64");
+            JsonNode root = objectMapper.readTree(raw);
+            JsonNode response = allResponseItems(root);
+
+            String idQr = findIdentificatorByCodeExact(response, "idQr");
+            if (idQr == null || idQr.isBlank()) {
+                idQr = findIdentificatorByCodeHint(response, "idqr", "id");
+            }
+
+            String qrBase64 = findIdentificatorByCodeExact(response, "QR");
+            if (qrBase64 == null || qrBase64.isBlank()) {
+                qrBase64 = findIdentificatorByCodeHint(response, "image", "base64");
+            }
+
+            log.info("[VPAY][PARSED] idQr={} qrBase64.length={}", idQr,
+                    qrBase64 != null ? qrBase64.length() : 0);
 
             if (idQr == null || idQr.isBlank()) {
                 throw new IllegalStateException("Vpay no devolvió el id del QR. Respuesta: " + raw);
@@ -194,7 +212,7 @@ public class VpayClient {
 
     private Map<String, Object> attr(String code, String value) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("code", code);
+        m.put("attribute", code);
         m.put("value", value);
         return m;
     }
@@ -205,6 +223,34 @@ public class VpayClient {
             return list.get(0).path("response");
         }
         return objectMapper.createArrayNode();
+    }
+
+    /** Une todos los items de responseList[*].response en un solo array. */
+    private JsonNode allResponseItems(JsonNode root) {
+        JsonNode list = root.path("responseList");
+        if (!list.isArray() || list.isEmpty()) {
+            return objectMapper.createArrayNode();
+        }
+        List<JsonNode> items = new ArrayList<>();
+        for (JsonNode entry : list) {
+            JsonNode response = entry.path("response");
+            if (response.isArray()) {
+                response.forEach(items::add);
+            }
+        }
+        return objectMapper.valueToTree(items);
+    }
+
+    /** Busca el identificator por coincidencia exacta del code (case-insensitive). */
+    private String findIdentificatorByCodeExact(JsonNode response, String expectedCode) {
+        if (response == null || !response.isArray() || expectedCode == null) return null;
+        for (JsonNode item : response) {
+            String code = item.path("code").asText("");
+            if (expectedCode.equalsIgnoreCase(code)) {
+                return item.path("identificator").asText(null);
+            }
+        }
+        return null;
     }
 
     /** Busca el "identificator" cuyo "code" contenga alguna de las pistas (case-insensitive). */

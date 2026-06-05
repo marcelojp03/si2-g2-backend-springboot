@@ -18,6 +18,8 @@ public record PagoPublicoDto(
         String estado,
         LocalDate fechaExpiracion,
         String proveedor,
+        /** idQr/referencia externa del proveedor (Vpay) */
+        String idQr,
         /** null hasta que el QR sea generado lazily */
         String qrBase64
 ) {
@@ -30,6 +32,7 @@ public record PagoPublicoDto(
                 p.getEstado(),
                 p.getFechaExpiracion(),
                 p.getProveedor(),
+                p.getReferenciaExterna(),
                 p.getQrBase64()
         );
     }

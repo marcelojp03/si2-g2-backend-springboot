@@ -444,21 +444,46 @@ CREATE OR REPLACE TRIGGER trg_reporte_campo_actualizado_en
 -- =========================================================
 
 -- G.1 Planes del sistema
+-- ON CONFLICT DO UPDATE garantiza que re-ejecutar el script corrige nombres, precios y descripciones.
 INSERT INTO plan_suscripcion (codigo, nombre, descripcion, max_usuarios, max_almacenamiento_mb, precio_mensual, estado)
 VALUES
     ('BASICO',
      'Plan Básico',
      'Hasta 10 usuarios. Módulos de identidad, estructura académica y operación básica.',
-     10, 512, 0.00, 'ACTIVO'),
+     10, 512, 1.00, 'ACTIVO'),
     ('PROFESIONAL',
      'Plan Profesional',
      'Hasta 50 usuarios. Todos los módulos Sprint 1-2: asistencia, calificaciones y horarios.',
      50, 2048, 150.00, 'ACTIVO'),
     ('EMPRESARIAL',
      'Plan Empresarial',
-     'Usuarios ilimitados. Incluye reportes avanzados, auditoría completa y gestión de respaldos.',
+     'Usuarios ilimitados. Incluye reportes avanzados, auditoria completa y gestion de respaldos.',
      999, 10240, 350.00, 'ACTIVO')
-ON CONFLICT (codigo) DO NOTHING;
+ON CONFLICT (codigo) DO UPDATE
+    SET nombre           = EXCLUDED.nombre,
+        descripcion      = EXCLUDED.descripcion,
+        max_usuarios     = EXCLUDED.max_usuarios,
+        precio_mensual   = EXCLUDED.precio_mensual,
+        estado           = EXCLUDED.estado;
+
+-- G.1b Corrección de datos en producción (ejecutar si los nombres están con encoding incorrecto)
+UPDATE sia.plan_suscripcion SET
+    nombre        = 'Plan Básico',
+    descripcion   = 'Hasta 10 usuarios. Módulos de identidad, estructura académica y operación básica.',
+    precio_mensual = 1.00
+WHERE codigo = 'BASICO';
+
+UPDATE sia.plan_suscripcion SET
+    nombre        = 'Plan Profesional',
+    descripcion   = 'Hasta 50 usuarios. Todos los módulos Sprint 1-2: asistencia, calificaciones y horarios.',
+    precio_mensual = 150.00
+WHERE codigo = 'PROFESIONAL';
+
+UPDATE sia.plan_suscripcion SET
+    nombre        = 'Plan Empresarial',
+    descripcion   = 'Usuarios ilimitados. Incluye reportes avanzados, auditoría completa y gestión de respaldos.',
+    precio_mensual = 350.00
+WHERE codigo = 'EMPRESARIAL';
 
 -- G.2 Módulos de la plataforma
 INSERT INTO modulo_sistema (codigo, nombre, descripcion, ruta_frontend, orden_visual)
@@ -472,7 +497,33 @@ VALUES
     ('REPORTES',     'Reportes',               'Reportes analíticos, gerenciales y dinámicos',     '/reportes',       7),
     ('AUDITORIA',    'Auditoría',              'Bitácora de operaciones y actividad de usuarios',  '/auditoria',      8),
     ('RESPALDOS',    'Respaldos',              'Gestión de copias de seguridad y restauraciones',  '/backups',        9)
-ON CONFLICT (codigo) DO NOTHING;
+ON CONFLICT (codigo) DO UPDATE
+    SET nombre        = EXCLUDED.nombre,
+        descripcion   = EXCLUDED.descripcion,
+        ruta_frontend = EXCLUDED.ruta_frontend,
+        orden_visual  = EXCLUDED.orden_visual,
+        estado        = 'ACTIVO';
+
+-- G.2b Corrección de mojibake en módulos (ejecutar si aparecen textos como "acadÃ©mica")
+UPDATE sia.modulo_sistema SET
+    nombre      = 'Estructura académica',
+    descripcion = 'Cursos, paralelos, materias y gestión académica'
+WHERE codigo = 'ESTRUCTURA';
+
+UPDATE sia.modulo_sistema SET
+    nombre      = 'Operación académica',
+    descripcion = 'Inscripciones, asignaciones docentes'
+WHERE codigo = 'OPERACION';
+
+UPDATE sia.modulo_sistema SET
+    nombre      = 'Auditoría',
+    descripcion = 'Bitácora de operaciones y actividad de usuarios'
+WHERE codigo = 'AUDITORIA';
+
+UPDATE sia.modulo_sistema SET
+    nombre      = 'Respaldos',
+    descripcion = 'Gestión de copias de seguridad y restauraciones'
+WHERE codigo = 'RESPALDOS';
 
 -- G.3 Asociar módulos a planes
 DO $$

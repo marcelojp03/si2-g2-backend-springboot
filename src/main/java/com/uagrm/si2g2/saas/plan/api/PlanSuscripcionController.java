@@ -30,7 +30,6 @@ public class PlanSuscripcionController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN_INSTITUCION','DIRECTOR')")
     public ResponseEntity<ApiResponse<List<PlanSuscripcionResponse>>> listar(
             @RequestParam(required = false) String estado) {
         return ResponseEntity.ok(ApiResponse.ok("Planes", service.listar(estado)));
