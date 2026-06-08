@@ -161,6 +161,9 @@ public class SyntheticDataSeeder {
         Institucion institucion = createInstitucion();
         stats.incrementCreated("instituciones");
         UUID idInstitucion = institucion.getId();
+        
+        // Forzar flush para que JPA persista la institución antes de usar JdbcTemplate
+        entityManager.flush();
 
         seedSuscripcionActiva(idInstitucion, stats);
         seedConfiguraciones(idInstitucion, stats);
