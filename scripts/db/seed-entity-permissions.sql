@@ -3,6 +3,21 @@
 
 BEGIN;
 
+-- Forzar schema objetivo para entornos donde search_path apunta a public
+SET LOCAL search_path TO sia, public;
+
+-- Prechecks para evitar errores ambiguos de relaciones inexistentes
+DO $$
+BEGIN
+    IF to_regnamespace('sia') IS NULL THEN
+        RAISE EXCEPTION 'Schema sia no existe. Ejecuta primero scripts/db/db-script.sql';
+    END IF;
+
+    IF to_regclass('sia.rol_permiso') IS NULL OR to_regclass('sia.permiso') IS NULL OR to_regclass('sia.rol') IS NULL THEN
+        RAISE EXCEPTION 'Faltan tablas base de seguridad (sia.rol, sia.permiso, sia.rol_permiso). Ejecuta primero scripts/db/db-script.sql';
+    END IF;
+END $$;
+
 -- Limpiar permisos obsoletos de roles
 DELETE FROM rol_permiso WHERE id_permiso IN (
     SELECT id FROM permiso WHERE codigo IN (

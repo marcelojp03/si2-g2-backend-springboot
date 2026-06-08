@@ -5,6 +5,9 @@
 --              configurables por institución/gestión
 -- ============================================================
 
+-- Requisito para gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- 1. Tabla de Dimensiones (globales + por institución)
 CREATE TABLE IF NOT EXISTS sia.dimension (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -18,6 +21,15 @@ CREATE TABLE IF NOT EXISTS sia.dimension (
     actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT uq_dimension_institucion_nombre UNIQUE (id_institucion, nombre)
 );
+
+-- Si la tabla ya existía sin default en id, lo corregimos para re-ejecuciones
+ALTER TABLE sia.dimension
+    ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
+-- Asegurar defaults de timestamps en tablas preexistentes
+ALTER TABLE sia.dimension
+    ALTER COLUMN creado_en SET DEFAULT NOW(),
+    ALTER COLUMN actualizado_en SET DEFAULT NOW();
 
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_dimension_institucion ON sia.dimension (id_institucion);
@@ -59,11 +71,11 @@ ALTER TABLE sia.actividad_evaluativa DROP CONSTRAINT IF EXISTS actividad_evaluat
 ALTER TABLE sia.actividad_evaluativa ALTER COLUMN dimension TYPE VARCHAR(50);
 
 -- 5. Insertar dimensiones por defecto (globales) para el sistema educativo boliviano
-INSERT INTO sia.dimension (id_institucion, nombre, descripcion, peso_default, estado, es_global) VALUES
-    (NULL, 'SER', 'Dimensión del Ser: evalúa valores, comportamiento y actitudes del estudiante', 10, 'ACTIVO', TRUE),
-    (NULL, 'SABER', 'Dimensión del Saber: evalúa conocimientos teóricos y conceptuales', 45, 'ACTIVO', TRUE),
-    (NULL, 'HACER', 'Dimensión del Hacer: evalúa habilidades prácticas y aplicación', 40, 'ACTIVO', TRUE),
-    (NULL, 'AUTOEVALUACION', 'Dimensión de Autoevaluación: reflexión del estudiante sobre su propio aprendizaje', 5, 'ACTIVO', TRUE)
+INSERT INTO sia.dimension (id, id_institucion, nombre, descripcion, peso_default, estado, es_global, creado_en, actualizado_en) VALUES
+    (gen_random_uuid(), NULL, 'SER', 'Dimensión del Ser: evalúa valores, comportamiento y actitudes del estudiante', 10, 'ACTIVO', TRUE, NOW(), NOW()),
+    (gen_random_uuid(), NULL, 'SABER', 'Dimensión del Saber: evalúa conocimientos teóricos y conceptuales', 45, 'ACTIVO', TRUE, NOW(), NOW()),
+    (gen_random_uuid(), NULL, 'HACER', 'Dimensión del Hacer: evalúa habilidades prácticas y aplicación', 40, 'ACTIVO', TRUE, NOW(), NOW()),
+    (gen_random_uuid(), NULL, 'AUTOEVALUACION', 'Dimensión de Autoevaluación: reflexión del estudiante sobre su propio aprendizaje', 5, 'ACTIVO', TRUE, NOW(), NOW())
 ON CONFLICT (id_institucion, nombre) DO NOTHING;
 
 -- 6. Función trigger para actualizar actualizado_en
