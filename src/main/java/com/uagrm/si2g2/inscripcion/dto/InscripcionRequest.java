@@ -19,4 +19,6 @@ public class InscripcionRequest {
     private UUID idParalelo;
 
     private LocalDate fechaInscripcion;
+
+    private UUID idPlanPago;
 }

@@ -1,12 +1,19 @@
 package com.uagrm.si2g2.tutor.api;
 
+import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.common.dto.ApiResponse;
+import com.uagrm.si2g2.estudiante.application.EstudianteService;
+import com.uagrm.si2g2.estudiante.dto.EstudianteResponse;
 import com.uagrm.si2g2.tutor.application.EstudianteTutorService;
 import com.uagrm.si2g2.tutor.application.TutorService;
+import com.uagrm.si2g2.tutor.domain.EstudianteTutorRepository;
+import com.uagrm.si2g2.tutor.domain.Tutor;
+import com.uagrm.si2g2.tutor.domain.TutorRepository;
 import com.uagrm.si2g2.tutor.dto.EstudianteTutorRequest;
 import com.uagrm.si2g2.tutor.dto.EstudianteTutorResponse;
 import com.uagrm.si2g2.tutor.dto.TutorRequest;
 import com.uagrm.si2g2.tutor.dto.TutorResponse;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +31,9 @@ public class TutorController {
 
     private final TutorService tutorService;
     private final EstudianteTutorService estudianteTutorService;
+    private final TutorRepository tutorRepository;
+    private final EstudianteTutorRepository estudianteTutorRepository;
+    private final EstudianteService estudianteService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('TUTORES_CREATE')")
@@ -56,6 +66,21 @@ public class TutorController {
     public ResponseEntity<ApiResponse<Void>> eliminar(@PathVariable UUID id) {
         tutorService.eliminar(id);
         return ResponseEntity.ok(ApiResponse.ok("Tutor desactivado", null));
+    }
+
+    @GetMapping("/mi-estudiante")
+    @PreAuthorize("hasRole('TUTOR')")
+    public ResponseEntity<ApiResponse<EstudianteResponse>> miEstudiante() {
+        UUID userId = SecurityUtils.currentUserId();
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        Tutor tutor = tutorRepository.findByIdUsuarioAndIdInstitucion(userId, idInstitucion)
+                .orElseThrow(() -> new EntityNotFoundException("Tutor no encontrado para el usuario actual"));
+        var vinculos = estudianteTutorRepository.findAllByIdInstitucionAndIdTutor(idInstitucion, tutor.getId());
+        if (vinculos.isEmpty()) {
+            throw new EntityNotFoundException("No hay estudiantes vinculados a este tutor");
+        }
+        return ResponseEntity.ok(ApiResponse.ok("Estudiante vinculado",
+                estudianteService.obtener(vinculos.getFirst().getIdEstudiante())));
     }
 
     // --- Vínculos estudiante-tutor ---

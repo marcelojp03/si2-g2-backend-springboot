@@ -36,6 +36,9 @@ public class Inscripcion extends BaseEntity {
     @Column(name = "fecha_inscripcion", nullable = false)
     private LocalDate fechaInscripcion;
 
+    @Column(name = "id_plan_pago")
+    private UUID idPlanPago;
+
     @Builder.Default
     @Column(name = "estado", nullable = false, length = 15)
     protected String estado = "ACTIVA";

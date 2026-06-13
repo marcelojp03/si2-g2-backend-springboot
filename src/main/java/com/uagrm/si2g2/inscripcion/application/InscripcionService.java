@@ -9,9 +9,11 @@ import com.uagrm.si2g2.inscripcion.domain.Inscripcion;
 import com.uagrm.si2g2.inscripcion.domain.InscripcionRepository;
 import com.uagrm.si2g2.inscripcion.dto.InscripcionRequest;
 import com.uagrm.si2g2.inscripcion.dto.InscripcionResponse;
+import com.uagrm.si2g2.pagos.application.CuotaService;
 import com.uagrm.si2g2.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class InscripcionService {
@@ -29,6 +32,7 @@ public class InscripcionService {
     private final ParaleloRepository paraleloRepository;
     private final AuditoriaService auditoriaService;
     private final ConfiguracionService configuracionService;
+    private final CuotaService cuotaService;
 
     @Transactional
     public InscripcionResponse inscribir(InscripcionRequest request) {
@@ -57,12 +61,25 @@ public class InscripcionService {
                 .idEstudiante(request.getIdEstudiante())
                 .idGestion(request.getIdGestion())
                 .idParalelo(request.getIdParalelo())
+                .idPlanPago(request.getIdPlanPago())
                 .fechaInscripcion(fecha)
                 .build();
         InscripcionResponse resp = InscripcionResponse.from(repository.save(i), paralelo.getIdCurso());
         auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
                 "INSCRIPCION", "INSCRIBIR", "inscripcion", resp.getId().toString(),
                 true, "Estudiante inscrito en gestión: " + request.getIdGestion());
+
+        // Generar cuotas automáticamente si se asignó un plan de pago
+        if (request.getIdPlanPago() != null) {
+            try {
+                int cuotas = cuotaService.generarCuotas(idInstitucion, request.getIdPlanPago(),
+                        request.getIdGestion(), request.getIdEstudiante());
+                log.info("Generadas {} cuotas para inscripción {}", cuotas, resp.getId());
+            } catch (Exception e) {
+                log.warn("No se pudieron generar cuotas para inscripción {}: {}", resp.getId(), e.getMessage());
+            }
+        }
+
         return resp;
     }
 

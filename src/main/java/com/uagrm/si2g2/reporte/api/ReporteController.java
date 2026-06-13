@@ -103,6 +103,57 @@ public class ReporteController {
         return ResponseEntity.ok(ApiResponse.ok("Reporte QBE generado", qbeService.preview(request)));
     }
 
+    @GetMapping("/rendimiento-estudiante")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_INSTITUCION', 'DIRECTOR', 'DOCENTE')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> rendimientoEstudiante(
+            @RequestParam UUID idEstudiante, @RequestParam UUID idGestion) {
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        return ResponseEntity.ok(ApiResponse.ok("Rendimiento del estudiante",
+                service.rendimientoEstudiante(idInstitucion, idEstudiante, idGestion)));
+    }
+
+    @GetMapping("/rendimiento-estudiante/export/{formato}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_INSTITUCION', 'DIRECTOR', 'DOCENTE')")
+    public ResponseEntity<byte[]> exportarRendimientoEstudiante(
+            @PathVariable String formato, @RequestParam UUID idEstudiante, @RequestParam UUID idGestion) {
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        var data = service.rendimientoEstudiante(idInstitucion, idEstudiante, idGestion);
+        var columnas = List.of("materia", "periodo", "promedio_actividades", "nota_ser", "autoevaluacion", "nota_consolidada", "estado");
+        var headers = List.of("Materia", "Periodo", "Prom. Actividades", "Nota SER", "Autoevaluacion", "Consolidado", "Estado");
+        return fileResponse(service.exportarDatos(data, columnas, headers, "rendimiento-estudiante", formato));
+    }
+
+    @GetMapping("/ranking-paralelo")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_INSTITUCION', 'DIRECTOR')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> rankingParalelo(
+            @RequestParam UUID idParalelo, @RequestParam UUID idGestion) {
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        return ResponseEntity.ok(ApiResponse.ok("Ranking del paralelo",
+                service.rankingParalelo(idInstitucion, idParalelo, idGestion)));
+    }
+
+    @GetMapping("/ranking-paralelo/export/{formato}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_INSTITUCION', 'DIRECTOR')")
+    public ResponseEntity<byte[]> exportarRankingParalelo(
+            @PathVariable String formato, @RequestParam UUID idParalelo, @RequestParam UUID idGestion) {
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        var data = service.rankingParalelo(idInstitucion, idParalelo, idGestion);
+        var columnas = List.of("estudiante", "promedio", "ranking");
+        var headers = List.of("Estudiante", "Promedio", "Ranking");
+        return fileResponse(service.exportarDatos(data, columnas, headers, "ranking-paralelo", formato));
+    }
+
+    @GetMapping("/riesgo-academico")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN_INSTITUCION', 'DIRECTOR')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> riesgoAcademico(
+            @RequestParam UUID idGestion,
+            @RequestParam(required = false) Double umbralAsistencia,
+            @RequestParam(required = false) Double umbralPromedio) {
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        return ResponseEntity.ok(ApiResponse.ok("Reporte de riesgo academico",
+                service.riesgoAcademico(idInstitucion, idGestion, umbralAsistencia, umbralPromedio)));
+    }
+
     @PostMapping("/qbe/export/{formato}")
     @PreAuthorize("hasAnyAuthority('REPORTES_EXPORT') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
     public ResponseEntity<byte[]> exportarQbe(@PathVariable String formato, @Valid @RequestBody QbePreviewRequest request) {

@@ -113,6 +113,25 @@ public class ReporteService {
 
     public record ExportedReport(byte[] bytes, String contentType, String fileName) {}
 
+    public ExportedReport exportarDatos(List<Map<String, Object>> data, List<String> columnas,
+                                         List<String> headers, String nombreBase, String formato) {
+        var encabezado = new com.uagrm.si2g2.reporte.dto.ReporteHeaderResponse(
+                nombreBase.replace("-", " "), null, null, null);
+        var cols = java.util.stream.IntStream.range(0, columnas.size())
+                .mapToObj(i -> new com.uagrm.si2g2.reporte.dto.ReporteColumnResponse(
+                        columnas.get(i), headers.size() > i ? headers.get(i) : columnas.get(i), null))
+                .toList();
+        var respuesta = new com.uagrm.si2g2.reporte.dto.ReportePreviewResponse(
+                encabezado, cols, data, null, data.size(), 0, data.size());
+        return exportar(respuesta, nombreBase, formato);
+    }
+
+    public ExportedReport exportar(ReportePreviewResponse reporte, String nombreBase, String formato) {
+        var exporter = exporterRegistry.get(formato);
+        var bytes = exporter.exportar(reporte);
+        return new ExportedReport(bytes, exporter.contentType(), nombreBase + "." + exporter.extension());
+    }
+
     public List<Map<String, Object>> reporteAsistencia(UUID idInstitucion, UUID idGestion, UUID idParalelo) {
         StringBuilder sql = new StringBuilder("""
                 SELECT
@@ -212,6 +231,80 @@ public class ReporteService {
         }
         sql.append(" ORDER BY c.nombre, p.nombre, e.apellidos, e.nombres ");
         return jdbc.queryForList(sql.toString(), params.toArray());
+    }
+
+    public List<Map<String, Object>> rendimientoEstudiante(UUID idInstitucion, UUID idEstudiante, UUID idGestion) {
+        return jdbc.queryForList("""
+            SELECT
+                m.nombre AS materia,
+                pe.numero_periodo AS periodo,
+                ROUND(AVG(ca.nota_obtenida)::numeric, 2) AS promedio_actividades,
+                COALESCE(cs.nota_ser, 0) AS nota_ser,
+                COALESCE(ae.nota_autoevaluacion, 0) AS autoevaluacion,
+                ROUND(
+                    (AVG(ca.nota_obtenida) * 0.85 + COALESCE(cs.nota_ser, 0) + COALESCE(ae.nota_autoevaluacion, 0))::numeric, 2
+                ) AS nota_consolidada,
+                CASE WHEN ROUND(
+                    (AVG(ca.nota_obtenida) * 0.85 + COALESCE(cs.nota_ser, 0) + COALESCE(ae.nota_autoevaluacion, 0))::numeric, 2
+                ) >= 51 THEN 'APROBADO' ELSE 'EN_RIESGO' END AS estado
+            FROM sia.calificacion_actividad ca
+            JOIN sia.actividad_evaluativa ae_act ON ae_act.id = ca.id_actividad
+            JOIN sia.materia m ON m.id = ae_act.id_materia
+            JOIN sia.periodo_evaluacion pe ON pe.id = ae_act.id_periodo_evaluacion
+            LEFT JOIN sia.calificacion_ser cs ON cs.id_estudiante = ca.id_estudiante AND cs.id_materia = m.id AND cs.id_periodo_evaluacion = pe.id
+            LEFT JOIN sia.autoevaluacion_trimestral ae ON ae.id_estudiante = ca.id_estudiante AND ae.id_materia = m.id AND ae.id_periodo_evaluacion = pe.id
+            WHERE ca.id_institucion = ? AND ca.id_estudiante = ?
+            GROUP BY m.nombre, pe.numero_periodo, cs.nota_ser, ae.nota_autoevaluacion
+            ORDER BY m.nombre, pe.numero_periodo
+            """, idInstitucion, idEstudiante);
+    }
+
+    public List<Map<String, Object>> rankingParalelo(UUID idInstitucion, UUID idParalelo, UUID idGestion) {
+        return jdbc.queryForList("""
+            SELECT
+                e.codigo_estudiante,
+                e.nombres || ' ' || e.apellidos AS estudiante,
+                ROUND(AVG(ca.nota_obtenida)::numeric, 2) AS promedio,
+                RANK() OVER (ORDER BY AVG(ca.nota_obtenida) DESC) AS ranking
+            FROM sia.calificacion_actividad ca
+            JOIN sia.actividad_evaluativa ae_act ON ae_act.id = ca.id_actividad
+            JOIN sia.estudiante e ON e.id = ca.id_estudiante
+            JOIN sia.inscripcion i ON i.id_estudiante = e.id AND i.id_institucion = ca.id_institucion
+            WHERE ca.id_institucion = ? AND i.id_paralelo = ? AND i.id_gestion_academica = ?
+            GROUP BY e.codigo_estudiante, e.nombres, e.apellidos
+            ORDER BY ranking
+            """, idInstitucion, idParalelo, idGestion);
+    }
+
+    public List<Map<String, Object>> riesgoAcademico(UUID idInstitucion, UUID idGestion,
+                                                       Double umbralAsistencia, Double umbralPromedio) {
+        double asisUmbral = umbralAsistencia != null ? umbralAsistencia : 60.0;
+        double promUmbral = umbralPromedio != null ? umbralPromedio : 51.0;
+        return jdbc.queryForList("""
+            SELECT
+                e.codigo_estudiante,
+                e.nombres || ' ' || e.apellidos AS estudiante,
+                c.nombre AS curso,
+                p.nombre AS paralelo,
+                ROUND(AVG(ca.nota_obtenida)::numeric, 2) AS promedio_calificaciones,
+                CASE
+                    WHEN AVG(ca.nota_obtenida) < ? THEN 'CRITICO'
+                    WHEN AVG(ca.nota_obtenida) < ? THEN 'ALTO'
+                    WHEN AVG(ca.nota_obtenida) < ? THEN 'MEDIO'
+                    ELSE 'BAJO'
+                END AS nivel_riesgo
+            FROM sia.calificacion_actividad ca
+            JOIN sia.actividad_evaluativa ae_act ON ae_act.id = ca.id_actividad
+            JOIN sia.periodo_evaluacion pe ON pe.id = ae_act.id_periodo_evaluacion
+            JOIN sia.estudiante e ON e.id = ca.id_estudiante
+            JOIN sia.inscripcion i ON i.id_estudiante = e.id AND i.id_institucion = ca.id_institucion
+            JOIN sia.paralelo p ON p.id = i.id_paralelo
+            JOIN sia.curso c ON c.id = p.id_curso
+            WHERE ca.id_institucion = ? AND pe.id_gestion_academica = ?
+            GROUP BY e.codigo_estudiante, e.nombres, e.apellidos, c.nombre, p.nombre
+            HAVING AVG(ca.nota_obtenida) < ?
+            ORDER BY AVG(ca.nota_obtenida)
+            """, promUmbral * 0.5, promUmbral * 0.7, promUmbral, idInstitucion, idGestion, promUmbral);
     }
 
     public Map<String, Object> reporteGerencial(UUID idInstitucion, UUID idGestion) {

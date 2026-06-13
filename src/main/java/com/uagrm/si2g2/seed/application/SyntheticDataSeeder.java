@@ -4,12 +4,28 @@ import com.uagrm.si2g2.academico.domain.GestionAcademica;
 import com.uagrm.si2g2.academico.domain.GestionAcademicaRepository;
 import com.uagrm.si2g2.asignacion.domain.AsignacionDocente;
 import com.uagrm.si2g2.asignacion.domain.AsignacionDocenteRepository;
+import com.uagrm.si2g2.asistencia.domain.AsistenciaDetalle;
+import com.uagrm.si2g2.asistencia.domain.AsistenciaDetalleRepository;
+import com.uagrm.si2g2.asistencia.domain.AsistenciaRegistro;
+import com.uagrm.si2g2.asistencia.domain.AsistenciaRegistroRepository;
 import com.uagrm.si2g2.aula.domain.Aula;
 import com.uagrm.si2g2.aula.domain.AulaRepository;
 import com.uagrm.si2g2.auth.domain.Rol;
 import com.uagrm.si2g2.auth.domain.RolRepository;
 import com.uagrm.si2g2.auth.domain.Usuario;
 import com.uagrm.si2g2.auth.domain.UsuarioRepository;
+import com.uagrm.si2g2.calificacion.domain.ActividadEvaluativa;
+import com.uagrm.si2g2.calificacion.domain.ActividadEvaluativaRepository;
+import com.uagrm.si2g2.calificacion.domain.AutoevaluacionTrimestral;
+import com.uagrm.si2g2.calificacion.domain.AutoevaluacionTrimestralRepository;
+import com.uagrm.si2g2.calificacion.domain.CalificacionActividad;
+import com.uagrm.si2g2.calificacion.domain.CalificacionActividadRepository;
+import com.uagrm.si2g2.calificacion.domain.CalificacionSer;
+import com.uagrm.si2g2.calificacion.domain.CalificacionSerRepository;
+import com.uagrm.si2g2.calificacion.domain.EvaluacionMateria;
+import com.uagrm.si2g2.calificacion.domain.EvaluacionMateriaRepository;
+import com.uagrm.si2g2.calificacion.domain.PeriodoEvaluacion;
+import com.uagrm.si2g2.calificacion.domain.PeriodoEvaluacionRepository;
 import com.uagrm.si2g2.curso.domain.Curso;
 import com.uagrm.si2g2.curso.domain.CursoRepository;
 import com.uagrm.si2g2.curso.domain.Paralelo;
@@ -18,6 +34,8 @@ import com.uagrm.si2g2.docente.domain.Docente;
 import com.uagrm.si2g2.docente.domain.DocenteRepository;
 import com.uagrm.si2g2.estudiante.domain.Estudiante;
 import com.uagrm.si2g2.estudiante.domain.EstudianteRepository;
+import com.uagrm.si2g2.horario.domain.HorarioClase;
+import com.uagrm.si2g2.horario.domain.HorarioClaseRepository;
 import com.uagrm.si2g2.inscripcion.domain.Inscripcion;
 import com.uagrm.si2g2.inscripcion.domain.InscripcionRepository;
 import com.uagrm.si2g2.institucion.application.ConfiguracionCatalog;
@@ -41,14 +59,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -83,6 +105,10 @@ public class SyntheticDataSeeder {
             "Salazar", "Ortiz", "Romero", "Camacho", "Torrico", "Burgos", "Peinado", "Ramos",
             "Sanchez", "Martinez", "Gonzalez", "Hernandez", "Ramirez", "Torres"
     };
+
+    private static final String[] DIAS_SEMANA = {"LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES"};
+    private static final String[] ESTADOS_ASISTENCIA = {"PRESENTE", "AUSENTE", "TARDANZA", "JUSTIFICADO"};
+    private static final double[] PESOS_ASISTENCIA = {0.80, 0.08, 0.07, 0.05};
 
     private static final String[] ESPECIALIDADES = {
             "Matematica", "Lenguaje", "Ciencias Naturales", "Ciencias Sociales", "Educacion Fisica",
@@ -133,6 +159,12 @@ public class SyntheticDataSeeder {
             {"FIL", "Filosofia y Psicologia", "Humanidades", "3"}
     };
 
+    private static final String[] TIPOS_EVALUACION = {"PARCIAL", "TRABAJO_PRACTICO"};
+    private static final BigDecimal PONDERACION_PARCIAL = new BigDecimal("40");
+    private static final BigDecimal PONDERACION_TP = new BigDecimal("60");
+    private static final int SEMANAS_ASISTENCIA = 8;
+    private static final int HORARIOS_POR_ASIGNACION = 2;
+
     private final InstitucionRepository institucionRepository;
     private final GestionAcademicaRepository gestionAcademicaRepository;
     private final CursoRepository cursoRepository;
@@ -151,6 +183,15 @@ public class SyntheticDataSeeder {
     private final JdbcTemplate jdbcTemplate;
     private final EntityManager entityManager;
     private final ConfiguracionInstitucionRepository configuracionInstitucionRepository;
+    private final PeriodoEvaluacionRepository periodoEvaluacionRepository;
+    private final EvaluacionMateriaRepository evaluacionMateriaRepository;
+    private final ActividadEvaluativaRepository actividadEvaluativaRepository;
+    private final CalificacionActividadRepository calificacionActividadRepository;
+    private final CalificacionSerRepository calificacionSerRepository;
+    private final AutoevaluacionTrimestralRepository autoevaluacionTrimestralRepository;
+    private final HorarioClaseRepository horarioClaseRepository;
+    private final AsistenciaRegistroRepository asistenciaRegistroRepository;
+    private final AsistenciaDetalleRepository asistenciaDetalleRepository;
 
     @Transactional
     public SeedResult seed() {
@@ -159,10 +200,10 @@ public class SyntheticDataSeeder {
         Roles roles = loadRoles();
 
         Institucion institucion = createInstitucion();
+        lastInstitucion = institucion;
         stats.incrementCreated("instituciones");
         UUID idInstitucion = institucion.getId();
-        
-        // Forzar flush para que JPA persista la institución antes de usar JdbcTemplate
+
         entityManager.flush();
 
         seedSuscripcionActiva(idInstitucion, stats);
@@ -175,13 +216,12 @@ public class SyntheticDataSeeder {
         Map<String, Materia> materias = seedMaterias(idInstitucion, stats);
         List<Docente> docentes = seedDocentes(idInstitucion, roles.docente(), stats, usuarios);
         seedAulas(idInstitucion, stats);
+        List<Aula> aulas = aulaRepository.findAllByIdInstitucionOrderByEstadoAscNombreAsc(idInstitucion);
         seedParalelosYCursoMateria(idInstitucion, cursos, gestion, materias, stats);
 
-        int parallelCount = 0;
         int studentIndex = 1;
         for (Curso curso : cursos) {
             for (String paraleloNombre : List.of("A", "B")) {
-                parallelCount++;
                 Paralelo paralelo = findOrCreateParalelo(idInstitucion, curso.getId(), gestion.getId(), paraleloNombre, 35);
                 stats.incrementCreated("paralelos");
 
@@ -190,9 +230,13 @@ public class SyntheticDataSeeder {
             }
         }
 
-        log.info("Seed completado. Creados={}, existentes={}", stats.creados, stats.existentes);
+        log.info("Seed base completado. Creados={}, existentes={}", stats.creados, stats.existentes);
         return new SeedResult("COLEGIO-SAN-MIGUEL", GESTION_NOMBRE, stats.creados, stats.existentes, usuarios);
     }
+
+    // ========================================================================
+    // MÉTODOS EXISTENTES (sin cambios)
+    // ========================================================================
 
     private Institucion createInstitucion() {
         return institucionRepository.findByCodigo(INSTITUCION_CODIGO)
@@ -415,7 +459,7 @@ public class SyntheticDataSeeder {
     }
 
     private void seedParalelosYCursoMateria(UUID idInstitucion, List<Curso> cursos, GestionAcademica gestion,
-                                           Map<String, Materia> materias, SeedStats stats) {
+                                            Map<String, Materia> materias, SeedStats stats) {
         for (Curso curso : cursos) {
             String[] materiasDelCurso = "Secundaria".equals(curso.getNivel()) ? MATERIAS_SECUNDARIA : MATERIAS_PRIMARIA;
             for (String codigo : materiasDelCurso) {
@@ -450,7 +494,7 @@ public class SyntheticDataSeeder {
     }
 
     private void seedAsignaciones(UUID idInstitucion, Paralelo paralelo, GestionAcademica gestion,
-                                  Map<String, Materia> materias, List<Docente> docentes, SeedStats stats) {
+                                   Map<String, Materia> materias, List<Docente> docentes, SeedStats stats) {
         String nivel = cursoRepository.findAllByIdInstitucion(idInstitucion).stream()
                 .filter(c -> c.getId().equals(paralelo.getIdCurso()))
                 .findFirst().map(Curso::getNivel).orElse("Primaria");
@@ -479,7 +523,8 @@ public class SyntheticDataSeeder {
     }
 
     private int seedEstudiantes(UUID idInstitucion, Curso curso, Paralelo paralelo, GestionAcademica gestion,
-                                Roles roles, SeedStats stats, List<SeedUser> usuarios, int startIndex, String paraleloNombre) {
+                                Roles roles, SeedStats stats, List<SeedUser> usuarios,
+                                int startIndex, String paraleloNombre) {
         int next = startIndex;
         int ageBase = "Secundaria".equals(curso.getNivel()) ? 12 : 6;
         int courseNum = Integer.parseInt(curso.getCodigo().substring(4));
@@ -643,6 +688,447 @@ public class SyntheticDataSeeder {
             Rol estudiante,
             Rol tutor
     ) {}
+
+    // ========================================================================
+    // NUEVOS MÉTODOS: Periodos de evaluación
+    // ========================================================================
+
+    private List<PeriodoEvaluacion> seedPeriodosEvaluacion(UUID idInstitucion, GestionAcademica gestion, SeedStats stats) {
+        List<PeriodoEvaluacion> periodos = new ArrayList<>();
+        LocalDate inicio = gestion.getFechaInicio();
+        long diasGestion = gestion.getFechaFin().toEpochDay() - inicio.toEpochDay();
+        int tercio = (int) (diasGestion / 3);
+
+        for (int p = 1; p <= 3; p++) {
+            int numPeriodo = p;
+            if (periodoEvaluacionRepository.findByIdInstitucionAndIdGestionAcademicaAndNumeroPeriodo(
+                    idInstitucion, gestion.getId(), numPeriodo).isPresent()) {
+                stats.incrementCreated("periodos_evaluacion");
+                continue;
+            }
+            LocalDate pInicio = inicio.plusDays((p - 1) * tercio);
+            LocalDate pFin = (p < 3) ? inicio.plusDays(p * tercio - 1) : gestion.getFechaFin();
+            PeriodoEvaluacion pe = periodoEvaluacionRepository.save(PeriodoEvaluacion.builder()
+                    .idInstitucion(idInstitucion)
+                    .idGestionAcademica(gestion.getId())
+                    .numeroPeriodo(numPeriodo)
+                    .tipoPeriodo("TRIMESTRAL")
+                    .fechaInicio(pInicio)
+                    .fechaFin(pFin)
+                    .estado("ABIERTO")
+                    .build());
+            periodos.add(pe);
+            stats.incrementCreated("periodos_evaluacion");
+        }
+        return periodos;
+    }
+
+    // ========================================================================
+    // NUEVOS MÉTODOS: Evaluaciones por materia
+    // ========================================================================
+
+    private void seedEvaluacionesMateria(UUID idInstitucion, Map<String, Materia> materias,
+                                          List<PeriodoEvaluacion> periodos, SeedStats stats) {
+        for (Materia materia : materias.values()) {
+            for (PeriodoEvaluacion pe : periodos) {
+                for (int t = 0; t < TIPOS_EVALUACION.length; t++) {
+                    String tipo = TIPOS_EVALUACION[t];
+                    String nombre = tipo + " " + pe.getNumeroPeriodo() + "er Trimestre";
+                    BigDecimal ponderacion = (t == 0) ? PONDERACION_PARCIAL : PONDERACION_TP;
+
+                    boolean exists = evaluacionMateriaRepository
+                            .existsByIdInstitucionAndIdMateriaAndPeriodoAndNombreIgnoreCase(
+                                    idInstitucion, materia.getId(), pe.getNumeroPeriodo(), nombre);
+                    if (!exists) {
+                        evaluacionMateriaRepository.save(EvaluacionMateria.builder()
+                                .idInstitucion(idInstitucion)
+                                .idMateria(materia.getId())
+                                .periodo(pe.getNumeroPeriodo())
+                                .tipo(tipo)
+                                .nombre(nombre)
+                                .ponderacion(ponderacion)
+                                .build());
+                    }
+                    stats.incrementCreated("evaluaciones_materia");
+                }
+            }
+        }
+    }
+
+    // ========================================================================
+    // NUEVOS MÉTODOS: Actividades evaluativas + calificaciones
+    // ========================================================================
+
+    private void seedActividadesYCalificaciones(UUID idInstitucion, Map<String, Materia> materias,
+                                                 List<Docente> docentes, List<PeriodoEvaluacion> periodos,
+                                                 List<Inscripcion> inscripciones, List<Estudiante> estudiantes,
+                                                 List<Curso> cursos, Random rng, SeedStats stats) {
+        Map<UUID, List<Inscripcion>> insPorEstudiante = inscripciones.stream()
+                .collect(Collectors.groupingBy(Inscripcion::getIdEstudiante));
+
+        for (Materia materia : materias.values()) {
+            Docente docente = docentes.get(Math.abs(materia.getCodigo().hashCode()) % docentes.size());
+            for (PeriodoEvaluacion pe : periodos) {
+                String[] dimensiones = {"SABER", "HACER"};
+                for (int d = 0; d < dimensiones.length; d++) {
+                    String nombreAct = dimensiones[d] + " - " + materia.getNombre() + " T" + pe.getNumeroPeriodo();
+
+                    boolean existsAct = false;
+                    try {
+                        existsAct = actividadEvaluativaRepository
+                                .existsByIdInstitucionAndIdPeriodoEvaluacionAndNombreActividadIgnoreCase(
+                                        idInstitucion, pe.getId(), nombreAct);
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                    if (existsAct) {
+                        stats.incrementCreated("actividades_evaluativas");
+                        stats.incrementCreated("calificaciones_actividad");
+                        continue;
+                    }
+
+                    LocalDate fechaAct = pe.getFechaInicio().plusDays(d * 15 + 5);
+
+                    ActividadEvaluativa actividad = actividadEvaluativaRepository.save(
+                            ActividadEvaluativa.builder()
+                                    .idInstitucion(idInstitucion)
+                                    .idPeriodoEvaluacion(pe.getId())
+                                    .idMateria(materia.getId())
+                                    .idDocente(docente.getId())
+                                    .nombreActividad(nombreAct)
+                                    .dimension(dimensiones[d])
+                                    .fechaActividad(fechaAct)
+                                    .puntajeMaximo(100)
+                                    .estado("PUBLICADA")
+                                    .build());
+                    stats.incrementCreated("actividades_evaluativas");
+
+                    for (Estudiante est : estudiantes) {
+                        if (calificacionActividadRepository
+                                .findByIdActividadAndIdEstudiante(actividad.getId(), est.getId()).isPresent()) {
+                            continue;
+                        }
+                        BigDecimal nota;
+                        if (dimensiones[d].equals("SABER")) {
+                            nota = BigDecimal.valueOf(30 + rng.nextDouble() * 65);
+                        } else {
+                            nota = BigDecimal.valueOf(40 + rng.nextDouble() * 55);
+                        }
+                        nota = nota.setScale(2, java.math.RoundingMode.HALF_UP);
+
+                        calificacionActividadRepository.save(CalificacionActividad.builder()
+                                .idInstitucion(idInstitucion)
+                                .idActividad(actividad.getId())
+                                .idEstudiante(est.getId())
+                                .notaObtenida(nota)
+                                .estado("REGISTRADA")
+                                .build());
+                        stats.incrementCreated("calificaciones_actividad");
+                    }
+                }
+            }
+        }
+    }
+
+    // ========================================================================
+    // NUEVOS MÉTODOS: Calificación SER + Autoevaluación
+    // ========================================================================
+
+    private void seedCalificacionSerYAuto(UUID idInstitucion, List<Estudiante> estudiantes,
+                                           Map<String, Materia> materias, List<PeriodoEvaluacion> periodos,
+                                           Random rng, SeedStats stats) {
+        for (Estudiante est : estudiantes) {
+            for (Materia materia : materias.values()) {
+                for (PeriodoEvaluacion pe : periodos) {
+                    if (!calificacionSerRepository
+                            .findByIdPeriodoEvaluacionAndIdEstudianteAndIdMateria(pe.getId(), est.getId(), materia.getId())
+                            .isPresent()) {
+                        BigDecimal notaSer = BigDecimal.valueOf(5 + rng.nextDouble() * 5)
+                                .setScale(2, java.math.RoundingMode.HALF_UP);
+                        calificacionSerRepository.save(CalificacionSer.builder()
+                                .idInstitucion(idInstitucion)
+                                .idPeriodoEvaluacion(pe.getId())
+                                .idEstudiante(est.getId())
+                                .idMateria(materia.getId())
+                                .notaSer(notaSer)
+                                .estado("REGISTRADA")
+                                .build());
+                        stats.incrementCreated("calificaciones_ser");
+                    }
+
+                    if (!autoevaluacionTrimestralRepository
+                            .findByIdPeriodoEvaluacionAndIdEstudianteAndIdMateria(pe.getId(), est.getId(), materia.getId())
+                            .isPresent()) {
+                        BigDecimal notaAuto = BigDecimal.valueOf(2 + rng.nextDouble() * 3)
+                                .setScale(2, java.math.RoundingMode.HALF_UP);
+                        autoevaluacionTrimestralRepository.save(AutoevaluacionTrimestral.builder()
+                                .idInstitucion(idInstitucion)
+                                .idPeriodoEvaluacion(pe.getId())
+                                .idEstudiante(est.getId())
+                                .idMateria(materia.getId())
+                                .notaAutoevaluacion(notaAuto)
+                                .estado("REGISTRADA")
+                                .build());
+                        stats.incrementCreated("autoevaluaciones");
+                    }
+                }
+            }
+        }
+    }
+
+    // ========================================================================
+    // NUEVOS MÉTODOS: Horarios
+    // ========================================================================
+
+    private void seedHorarios(UUID idInstitucion, List<AsignacionDocente> asignaciones,
+                               List<Aula> aulas, SeedStats stats) {
+        LocalTime[] horasInicio = {LocalTime.of(8, 0), LocalTime.of(9, 30),
+                LocalTime.of(11, 0), LocalTime.of(14, 0), LocalTime.of(15, 30)};
+        LocalTime[] horasFin = {LocalTime.of(9, 15), LocalTime.of(10, 45),
+                LocalTime.of(12, 15), LocalTime.of(15, 15), LocalTime.of(16, 45)};
+
+        int aulaIdx = 0;
+        for (AsignacionDocente asig : asignaciones) {
+            List<HorarioClase> existing = horarioClaseRepository.findByIdAsignacionDocenteAndEstado(
+                    asig.getId(), "ACTIVO");
+            if (!existing.isEmpty()) {
+                stats.incrementCreated("horarios");
+                continue;
+            }
+
+            for (int h = 0; h < HORARIOS_POR_ASIGNACION; h++) {
+                Aula aula = aulas.get(aulaIdx % aulas.size());
+                aulaIdx++;
+                int slot = Math.abs(asig.getIdMateria().hashCode() + h) % horasInicio.length;
+                String dia = DIAS_SEMANA[(Math.abs(asig.getId().hashCode()) + h) % DIAS_SEMANA.length];
+
+                horarioClaseRepository.save(HorarioClase.builder()
+                        .idInstitucion(idInstitucion)
+                        .idAsignacionDocente(asig.getId())
+                        .idAula(aula.getId())
+                        .diaSemana(dia)
+                        .horaInicio(horasInicio[slot])
+                        .horaFin(horasFin[slot])
+                        .build());
+                stats.incrementCreated("horarios");
+            }
+        }
+    }
+
+    // ========================================================================
+    // NUEVOS MÉTODOS: Asistencias
+    // ========================================================================
+
+    private void seedAsistencias(UUID idInstitucion, List<AsignacionDocente> asignaciones,
+                                  Map<UUID, List<Inscripcion>> inscripcionesPorParalelo,
+                                  GestionAcademica gestion, Random rng, SeedStats stats) {
+        LocalDate inicio = gestion.getFechaInicio().plusWeeks(2);
+
+        for (AsignacionDocente asig : asignaciones) {
+            List<Inscripcion> inscritos = inscripcionesPorParalelo
+                    .getOrDefault(asig.getIdParalelo(), List.of());
+            if (inscritos.isEmpty()) continue;
+
+            for (int s = 0; s < SEMANAS_ASISTENCIA; s++) {
+                LocalDate fecha = inicio.plusWeeks(s);
+
+                boolean exists = asistenciaRegistroRepository
+                        .existsByIdInstitucionAndIdAsignacionDocenteAndFecha(idInstitucion, asig.getId(), fecha);
+                if (exists) {
+                    stats.incrementCreated("asistencias_registro");
+                    stats.incrementCreated("asistencias_detalle");
+                    continue;
+                }
+
+                AsistenciaRegistro reg = asistenciaRegistroRepository.save(
+                        AsistenciaRegistro.builder()
+                                .idInstitucion(idInstitucion)
+                                .idAsignacionDocente(asig.getId())
+                                .fecha(fecha)
+                                .build());
+                stats.incrementCreated("asistencias_registro");
+
+                for (Inscripcion ins : inscritos) {
+                    double roll = rng.nextDouble();
+                    String estado = ESTADOS_ASISTENCIA[0];
+                    double acc = 0;
+                    for (int i = 0; i < ESTADOS_ASISTENCIA.length; i++) {
+                        acc += PESOS_ASISTENCIA[i];
+                        if (roll <= acc) {
+                            estado = ESTADOS_ASISTENCIA[i];
+                            break;
+                        }
+                    }
+
+                    if (!asistenciaDetalleRepository
+                            .existsByIdAsistenciaRegistroAndIdInscripcion(reg.getId(), ins.getId())) {
+                        asistenciaDetalleRepository.save(AsistenciaDetalle.builder()
+                                .idAsistenciaRegistro(reg.getId())
+                                .idInscripcion(ins.getId())
+                                .estadoAsistencia(estado)
+                                .build());
+                        stats.incrementCreated("asistencias_detalle");
+                    }
+                }
+            }
+        }
+    }
+
+    private Institucion lastInstitucion;
+
+    public Institucion getInstitucion() {
+        return lastInstitucion;
+    }
+
+    @Transactional
+    public void seedForInstitution(UUID idInstitucion, String codigo, String nombre) {
+        String dominio = codigo.toLowerCase().replaceAll("[^a-z0-9]", "") + ".edu.bo";
+        Roles roles = loadRoles();
+        SeedStats stats = new SeedStats();
+
+        seedSuscripcionActiva(idInstitucion, stats);
+        seedConfiguraciones(idInstitucion, codigo, nombre, stats);
+        GestionAcademica gestion = createGestion(idInstitucion);
+        stats.incrementCreated("gestiones");
+
+        List<SeedUser> usuarios = new ArrayList<>();
+        seedUsuariosAdmin(idInstitucion, codigo, dominio, roles, usuarios);
+        List<Curso> cursos = seedCursos(idInstitucion, stats);
+        Map<String, Materia> materias = seedMaterias(idInstitucion, stats);
+        List<Docente> docentes = seedDocentes(idInstitucion, codigo, dominio, roles.docente(), stats, usuarios);
+        seedAulas(idInstitucion, codigo, stats);
+        List<Aula> aulas = aulaRepository.findAllByIdInstitucionOrderByEstadoAscNombreAsc(idInstitucion);
+        seedParalelosYCursoMateria(idInstitucion, cursos, gestion, materias, stats);
+
+        int studentIndex = 1;
+        for (Curso curso : cursos) {
+            for (String paraleloNombre : List.of("A", "B")) {
+                Paralelo paralelo = findOrCreateParalelo(idInstitucion, curso.getId(), gestion.getId(), paraleloNombre, 35);
+                stats.incrementCreated("paralelos");
+                seedAsignaciones(idInstitucion, paralelo, gestion, materias, docentes, stats);
+                studentIndex = seedEstudiantes(idInstitucion, curso, paralelo, gestion, roles, stats, usuarios,
+                        studentIndex, paraleloNombre, codigo, dominio);
+            }
+        }
+        log.info("Seed completado para {} ({}). Creados={}", nombre, codigo, stats.creados);
+    }
+
+    private void seedConfiguraciones(UUID idInstitucion, String codigo, String nombre, SeedStats stats) {
+        for (ConfiguracionCatalog.Definition def : ConfiguracionCatalog.DEFINITIONS) {
+            String valor = switch (def.getClave()) {
+                case "NOMBRE_CORTO" -> nombre;
+                case "DESCRIPCION" -> nombre + " - Santa Cruz, Bolivia";
+                case "TELEFONO_CONTACTO" -> "33112345";
+                case "CORREO_CONTACTO" -> "contacto@" + codigo.toLowerCase().replaceAll("[^a-z0-9]", "") + ".edu.bo";
+                case "SITIO_WEB" -> "https://www." + codigo.toLowerCase().replaceAll("[^a-z0-9]", "") + ".edu.bo";
+                case "COLOR_PRIMARIO" -> "#1a5f7a";
+                case "MAX_ALUMNOS_AULA" -> "35";
+                case "FORMATO_CODIGO_ESTUDIANTE" -> codigo + "-EST-{SEQ}";
+                default -> ConfiguracionCatalog.resolveDefaultValue(def, "PRIVADO");
+            };
+            findOrCreateConfiguracion(idInstitucion, def, valor);
+            stats.incrementCreated("configuraciones");
+        }
+    }
+
+    private void seedUsuariosAdmin(UUID idInstitucion, String codigo, String dominio, Roles roles, List<SeedUser> usuarios) {
+        String pass = "Colegio2026!";
+        createUsuario("admin@" + dominio, "Maria", "Rodriguez", idInstitucion, roles.adminInstitucion());
+        createUsuario("director@" + dominio, "Roberto", "Sanchez", idInstitucion, roles.director());
+        createUsuario("secretaria@" + dominio, "Carmen", "Torres", idInstitucion, roles.secretario());
+        log.info("  Admins creados para {}: admin@{}, director@{}, secretaria@{}", codigo, dominio, dominio, dominio);
+    }
+
+    private List<Docente> seedDocentes(UUID idInstitucion, String codigo, String dominio, Rol docenteRol, SeedStats stats, List<SeedUser> usuarios) {
+        List<Docente> docentes = new ArrayList<>();
+        String[] docentesNombres = {
+                "Ana Rojas", "Carlos Mendez", "Patricia Vargas", "Luis Arce", "Ruth Aguilar",
+                "Mario Suarez", "Claudia Medina", "Fernando Paz", "Marcela Lopez", "Hugo Salazar",
+                "Elena Camacho", "Jorge Rivera", "Marisol Gutierrez", "Oscar Romero", "Diana Centeno",
+                "Pablo Iriarte", "Gloria Condori", "Raul Peinado", "Sandra Veizaga", "Alberto Villarroel"
+        };
+        for (int i = 0; i < docentesNombres.length; i++) {
+            String[] partes = docentesNombres[i].split(" ", 2);
+            String correo = "docente." + (i + 1) + "@" + dominio;
+            Usuario usuario = createUsuario(correo, partes[0], partes[1], idInstitucion, docenteRol);
+            String codigoDoc = codigo + "-DOC-" + String.format("%03d", i + 1);
+            String ciDoc = "" + (7000000 + i * 1111);
+            Docente docente = findOrCreateDocente(idInstitucion, usuario.getId(), codigoDoc, ciDoc,
+                    partes[0], partes[1], "7" + (6000000 + i * 1111), correo, ESPECIALIDADES[i % ESPECIALIDADES.length]);
+            docentes.add(docente);
+            stats.incrementCreated("docentes");
+        }
+        return docentes;
+    }
+
+    private void seedAulas(UUID idInstitucion, String codigo, SeedStats stats) {
+        for (int i = 1; i <= 24; i++) {
+            String bloque = i <= 12 ? "Bloque A" : "Bloque B";
+            String piso = String.valueOf(((i - 1) / 6) + 1);
+            String recursos = i % 3 == 0 ? "Pizarra|Proyector|Internet" : i % 2 == 0 ? "Pizarra|Computadoras" : "Pizarra";
+            findOrCreateAula(idInstitucion, codigo + "-AULA-" + String.format("%03d", i),
+                    "Aula " + String.format("%02d", i), 35, bloque + ", Piso " + piso, recursos);
+            stats.incrementCreated("aulas");
+        }
+    }
+
+    private int seedEstudiantes(UUID idInstitucion, Curso curso, Paralelo paralelo, GestionAcademica gestion,
+                                Roles roles, SeedStats stats, List<SeedUser> usuarios,
+                                int startIndex, String paraleloNombre, String codigo, String dominio) {
+        int next = startIndex;
+        int ageBase = "Secundaria".equals(curso.getNivel()) ? 12 : 6;
+        int courseNum = Integer.parseInt(curso.getCodigo().substring(4));
+        int baseAge = ageBase + courseNum;
+
+        for (int i = 0; i < 20; i++) {
+            boolean female = i % 2 == 0;
+            String nombre = female ? NOMBRES_F[(next) % NOMBRES_F.length] : NOMBRES_M[(next) % NOMBRES_M.length];
+            String apellido1 = APELLIDOS[(next * 3) % APELLIDOS.length];
+            String apellido2 = APELLIDOS[(next * 7 + 5) % APELLIDOS.length];
+            String nombreCompleto = nombre + " " + apellido1 + " " + apellido2;
+            String codigoEst = codigo + "-EST-" + String.format("%04d", next);
+            String documento = String.valueOf(8000000 + next * 111);
+            LocalDate fechaNac = LocalDate.of(2026 - baseAge, ((next * 3) % 12) + 1, ((next * 5) % 28) + 1);
+            String sexo = female ? "FEMENINO" : "MASCULINO";
+            String correoEst = "estudiante." + String.format("%04d", next) + "@" + dominio;
+
+            Usuario usuario = usuarioRepository.findByCorreo(correoEst).orElse(null);
+            if (usuario == null) {
+                usuario = usuarioRepository.save(Usuario.builder()
+                        .idInstitucion(idInstitucion)
+                        .correo(correoEst)
+                        .hashContrasena(passwordEncoder.encode(PASSWORD))
+                        .nombres(nombre)
+                        .apellidos(apellido1 + " " + apellido2)
+                        .roles(Set.of(roles.estudiante()))
+                        .build());
+                stats.incrementCreated("usuarios");
+            }
+
+            Estudiante estudiante = findOrCreateEstudiante(idInstitucion, usuario.getId(), codigoEst, documento,
+                    nombre, apellido1 + " " + apellido2, fechaNac, sexo,
+                    "Santa Cruz, zona " + APELLIDOS[(next * 2) % APELLIDOS.length],
+                    "7" + String.format("%07d", 7000000 + next), correoEst);
+            stats.incrementCreated("estudiantes");
+
+            String parentesco = PARENTESCOS[(next) % PARENTESCOS.length];
+            String nombreTutor = female ? "Maria" : "Jose";
+            String apellidoTutor1 = APELLIDOS[(next + 10) % APELLIDOS.length];
+            String apellidoTutor2 = APELLIDOS[(next + 15) % APELLIDOS.length];
+            String documentoTutor = String.valueOf(9000000 + next * 111);
+            Tutor tutor = findOrCreateTutor(idInstitucion, null, documentoTutor, nombreTutor,
+                    apellidoTutor1 + " " + apellidoTutor2,
+                    "7" + String.format("%07d", 8000000 + next), null,
+                    "Santa Cruz, zona " + APELLIDOS[(next + 7) % APELLIDOS.length]);
+            stats.incrementCreated("tutores");
+            findOrCreateEstudianteTutor(idInstitucion, estudiante.getId(), tutor.getId(), parentesco, true);
+            stats.incrementCreated("estudiante_tutores");
+            findOrCreateInscripcion(idInstitucion, estudiante.getId(), gestion.getId(), paralelo.getId(), LocalDate.of(2026, 2, 1));
+            stats.incrementCreated("inscripciones");
+            next++;
+        }
+        return next;
+    }
 
     private static class SeedStats {
         private final Map<String, Integer> creados = new LinkedHashMap<>();

@@ -1,6 +1,7 @@
 package com.uagrm.si2g2.seed.application;
 
-import com.uagrm.si2g2.seed.dto.SeedResult;
+import com.uagrm.si2g2.institucion.domain.Institucion;
+import com.uagrm.si2g2.institucion.domain.InstitucionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -14,16 +15,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class SyntheticSeedInitializer implements ApplicationRunner {
 
-    private final SyntheticDataSeeder syntheticDataSeeder;
+    private final InstitucionRepository institucionRepository;
 
     @Override
     public void run(ApplicationArguments args) {
-        SeedResult result = syntheticDataSeeder.seed();
-        log.info(
-                "Datos sinteticos inicializados: instituciones={}, creados={}, existentes={}",
-                result.institucionCodigo(),
-                result.creados(),
-                result.existentes()
-        );
+        long institucionesConDatos = institucionRepository.findAll().stream()
+                .filter(inst -> inst.getCodigo() != null)
+                .count();
+        log.info("Seed automatico omitido. {} instituciones disponibles con datos ya generados.", institucionesConDatos);
+        log.info("Usa POST /api/seed/synthetic (SUPER_ADMIN) para regenerar datos manualmente.");
     }
 }

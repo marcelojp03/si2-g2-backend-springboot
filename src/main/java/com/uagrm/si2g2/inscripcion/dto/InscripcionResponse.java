@@ -18,6 +18,7 @@ public class InscripcionResponse {
     private UUID idGestion;
     private UUID idCurso;
     private UUID idParalelo;
+    private UUID idPlanPago;
     private LocalDate fechaInscripcion;
     private String estado;
     private Instant creadoEn;
@@ -30,6 +31,7 @@ public class InscripcionResponse {
                 .idGestion(i.getIdGestion())
                 .idCurso(idCurso)
                 .idParalelo(i.getIdParalelo())
+                .idPlanPago(i.getIdPlanPago())
                 .fechaInscripcion(i.getFechaInscripcion())
                 .estado(i.getEstado())
                 .creadoEn(i.getCreadoEn())

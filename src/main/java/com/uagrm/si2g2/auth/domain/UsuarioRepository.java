@@ -33,4 +33,13 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
             """)
     List<UUID> findInstitutionIdsWithActiveRole(@Param("codigoRol") String codigoRol,
                                                 @Param("estado") String estado);
+
+    @Query("""
+            select u from Usuario u join u.roles r
+            where u.idInstitucion = :idInstitucion
+              and u.estado = 'ACTIVO'
+              and r.codigo in :codigosRoles
+            """)
+    List<Usuario> findByIdInstitucionAndRoles(@Param("idInstitucion") UUID idInstitucion,
+                                              @Param("codigosRoles") List<String> codigosRoles);
 }
