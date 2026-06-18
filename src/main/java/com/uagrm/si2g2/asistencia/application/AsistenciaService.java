@@ -234,9 +234,11 @@ public class AsistenciaService {
                         .idAsistenciaRegistro(registro.getId())
                         .idInscripcion(detalleRequest.getIdInscripcion())
                         .estadoAsistencia(estadoNormalizado)
+                        .justificacion(detalleRequest.getJustificacion())
                         .build();
             } else {
                 detalle.setEstadoAsistencia(estadoNormalizado);
+                detalle.setJustificacion(detalleRequest.getJustificacion());
             }
 
             detallesGuardar.add(detalle);
@@ -482,6 +484,7 @@ public class AsistenciaService {
                             .apellidos(estudiante.getApellidos())
                             .nombreCompleto(estudiante.getNombres() + " " + estudiante.getApellidos())
                             .estadoAsistencia(detalle == null ? "PRESENTE" : detalle.getEstadoAsistencia())
+                            .justificacion(detalle == null ? null : detalle.getJustificacion())
                             .registrado(detalle != null)
                             .build();
                 })

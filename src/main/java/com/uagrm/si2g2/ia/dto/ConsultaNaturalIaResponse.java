@@ -6,5 +6,6 @@ public record ConsultaNaturalIaResponse(
         String sqlGenerado,
         List<String> columnas,
         List<List<Object>> filas,
-        int total
+        int total,
+        String interpretacion
 ) {}

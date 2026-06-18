@@ -41,8 +41,8 @@ public class DocentesPorMateriaReporteHandler extends AbstractReporteHandler {
                        COUNT(DISTINCT d.id) AS total_docentes,
                        STRING_AGG(DISTINCT CONCAT(d.apellidos, ' ', d.nombres), ', ' ORDER BY CONCAT(d.apellidos, ' ', d.nombres)) AS docentes
                 FROM materia m
-                LEFT JOIN docente_materia dm ON dm.id_materia = m.id
-                LEFT JOIN docente d ON d.id = dm.id_docente AND d.id_institucion = m.id_institucion
+                LEFT JOIN asignacion_docente ad ON ad.id_materia = m.id AND ad.id_institucion = m.id_institucion
+                LEFT JOIN docente d ON d.id = ad.id_docente AND d.id_institucion = m.id_institucion
                 """ + where + " GROUP BY m.id, m.codigo, m.nombre ORDER BY total_docentes " + direction + ", m.nombre ASC";
 
         return ReporteQuerySupport.execute(

@@ -29,6 +29,9 @@ public class AsistenciaDetalle {
     @Column(name = "estado_asistencia", nullable = false, length = 15)
     private String estadoAsistencia;
 
+    @Column(name = "justificacion", length = 500)
+    private String justificacion;
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     private Instant creadoEn;
 

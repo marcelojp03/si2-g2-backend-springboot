@@ -20,5 +20,6 @@ public class AsistenciaEstudianteResponse {
     private String nombreCompleto;
 
     private String estadoAsistencia;
+    private String justificacion;
     private boolean registrado;
 }

@@ -44,6 +44,9 @@ public class RegistroRestauracion {
     @Column(name = "observacion", columnDefinition = "TEXT")
     private String observacion;
 
+    @Column(name = "resultado", columnDefinition = "TEXT")
+    private String resultado;
+
     @Column(name = "simulado", nullable = false)
     private boolean simulado = false;
 

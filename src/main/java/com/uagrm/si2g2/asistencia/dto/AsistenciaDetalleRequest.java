@@ -19,4 +19,6 @@ public class AsistenciaDetalleRequest {
             message = "El estado debe ser PRESENTE, AUSENTE, TARDANZA o JUSTIFICADO"
     )
     private String estadoAsistencia;
+
+    private String justificacion;
 }

@@ -4,6 +4,7 @@ import com.uagrm.si2g2.common.dto.ApiResponse;
 import com.uagrm.si2g2.usuario.application.UsuarioService;
 import com.uagrm.si2g2.usuario.dto.ActualizarUsuarioRequest;
 import com.uagrm.si2g2.usuario.dto.AsignarRolRequest;
+import com.uagrm.si2g2.usuario.dto.PaginatedUsuarioResponse;
 import com.uagrm.si2g2.usuario.dto.UsuarioResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,17 @@ public class UsuarioController {
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_READ')")
     public ResponseEntity<ApiResponse<List<UsuarioResponse>>> listar() {
         return ResponseEntity.ok(ApiResponse.ok("Usuarios", service.listar()));
+    }
+
+    @GetMapping("/paginado")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasAuthority('USUARIOS_READ')")
+    public ResponseEntity<ApiResponse<PaginatedUsuarioResponse>> listarPaginado(
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size,
+            @RequestParam(defaultValue = "correo") String sortField,
+            @RequestParam(defaultValue = "asc") String sortDir) {
+        return ResponseEntity.ok(ApiResponse.ok("Usuarios", service.listarPaginado(search, page, size, sortField, sortDir)));
     }
 
     @GetMapping("/{id}")

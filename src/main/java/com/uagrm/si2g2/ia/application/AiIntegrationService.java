@@ -228,7 +228,20 @@ public class AiIntegrationService {
     private Map<String, Object> extractDataAsMap(Map<?, ?> apiResponse) {
         Object data = apiResponse != null ? apiResponse.get("data") : null;
         if (data instanceof Map<?, ?> map) {
-            return (Map<String, Object>) map;
+            Map<String, Object> result = new java.util.LinkedHashMap<>();
+            for (var entry : map.entrySet()) {
+                String key = entry.getKey().toString();
+                // snake_case -> camelCase (ej: sql_generado -> sqlGenerado)
+                StringBuilder camel = new StringBuilder();
+                boolean nextUpper = false;
+                for (char c : key.toCharArray()) {
+                    if (c == '_') { nextUpper = true; continue; }
+                    camel.append(nextUpper ? Character.toUpperCase(c) : c);
+                    nextUpper = false;
+                }
+                result.put(camel.toString(), entry.getValue());
+            }
+            return result;
         }
         throw new RuntimeException("Respuesta inesperada de FastAPI: campo 'data' no es un objeto");
     }

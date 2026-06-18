@@ -10,13 +10,22 @@ import com.uagrm.si2g2.persona.application.PersonaProvisioningService;
 import com.uagrm.si2g2.tenant.TenantContext;
 import com.uagrm.si2g2.usuario.dto.ActualizarUsuarioRequest;
 import com.uagrm.si2g2.usuario.dto.AsignarRolRequest;
+import com.uagrm.si2g2.usuario.dto.PaginatedUsuarioResponse;
 import com.uagrm.si2g2.usuario.dto.UsuarioResponse;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -42,6 +51,43 @@ public class UsuarioService {
         }
         return usuarioRepository.findAllByIdInstitucion(idInstitucion).stream()
                 .map(UsuarioResponse::from).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public PaginatedUsuarioResponse listarPaginado(String search, int page, int size, String sortField, String sortDir) {
+        UUID idInstitucion = TenantContext.get();
+        if (idInstitucion == null && !SecurityUtils.currentUserHasRole("SUPER_ADMIN")) {
+            throw new AccessDeniedException("Solo SUPER_ADMIN puede listar usuarios globalmente");
+        }
+
+        Sort sort = Sort.by(sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC,
+                sortField != null ? sortField : "correo");
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Specification<Usuario> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (idInstitucion != null) {
+                predicates.add(cb.equal(root.get("idInstitucion"), idInstitucion));
+            }
+            if (StringUtils.hasText(search)) {
+                String pattern = "%" + search.toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("correo")), pattern),
+                        cb.like(cb.lower(root.get("nombres")), pattern),
+                        cb.like(cb.lower(root.get("apellidos")), pattern)
+                ));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        Page<Usuario> pageResult = usuarioRepository.findAll(spec, pageable);
+
+        return PaginatedUsuarioResponse.builder()
+                .usuarios(pageResult.getContent().stream().map(UsuarioResponse::from).toList())
+                .total(pageResult.getTotalElements())
+                .pagina(pageResult.getNumber())
+                .totalPaginas(pageResult.getTotalPages())
+                .build();
     }
 
     @Transactional(readOnly = true)

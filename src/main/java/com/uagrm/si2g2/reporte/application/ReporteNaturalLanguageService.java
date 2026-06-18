@@ -23,7 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Traduce consultas en lenguaje natural a {@link ReportePreviewRequest} usando GPT-4o-mini via FastAPI.
+ * Traduce consultas en lenguaje natural a {@link ReportePreviewRequest} usando IA via FastAPI.
  * La deteccion de intencion y extraccion de filtros la hace la IA; este servicio se encarga de:
  * <ul>
  *   <li>Validar restricciones de seguridad multi-tenant antes de llamar a la IA.</li>
@@ -66,7 +66,7 @@ public class ReporteNaturalLanguageService {
 
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
 
-        // GPT-4o-mini detecta el reporte adecuado y extrae filtros no-UUID
+        // FastAPI detecta el reporte adecuado y extrae filtros no-UUID via IA
         ReporteNlIaResponse ia = aiIntegrationService.nlAReporte(new ReporteNlIaRequest(raw), authHeader);
 
         if ("ERROR".equals(ia.codigoReporte())) {
@@ -126,7 +126,7 @@ public class ReporteNaturalLanguageService {
 
         return new Translation(translatedRequest, List.of(
                 "Consulta original: " + raw,
-                "Reporte detectado por IA (GPT-4o-mini): " + ia.codigoReporte()
+                "Reporte detectado: " + ia.codigoReporte()
                         + " -- confianza " + String.format("%.0f%%", ia.confianza() * 100),
                 "Modo: lenguaje natural con IA; id_institucion inyectado en backend (multi-tenant seguro)"
         ));
