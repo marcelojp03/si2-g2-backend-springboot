@@ -5,6 +5,7 @@ import com.uagrm.si2g2.academico.domain.GestionAcademicaRepository;
 import com.uagrm.si2g2.calificacion.domain.*;
 import com.uagrm.si2g2.calificacion.dto.*;
 import com.uagrm.si2g2.common.SecurityUtils;
+import com.uagrm.si2g2.dimension.application.DimensionService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,8 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -35,6 +39,7 @@ public class PeriodoEvaluacionService {
 
     private final PeriodoEvaluacionRepository periodoRepository;
     private final GestionAcademicaRepository gestionAcademicaRepository;
+    private final DimensionService dimensionService;
 
     @Transactional
     public List<PeriodoEvaluacionResponse> crearPeriodosPorGestion(UUID idGestion, List<PeriodoEvaluacionRequest> periodos) {
@@ -67,7 +72,79 @@ public class PeriodoEvaluacionService {
     public List<PeriodoEvaluacionResponse> listarPorGestion(UUID idGestion) {
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
         return periodoRepository.findAllByIdInstitucionAndIdGestionAcademica(idInstitucion, idGestion)
-                .stream().map(PeriodoEvaluacionResponse::from).toList();
+                .stream()
+                .sorted(Comparator.comparing(PeriodoEvaluacion::getNumeroPeriodo))
+                .map(PeriodoEvaluacionResponse::from).toList();
+    }
+
+    @Transactional
+    public List<PeriodoEvaluacionResponse> sincronizarPeriodosConfigurados(GestionAcademica gestion) {
+        return sincronizarPeriodosConfigurados(gestion, gestion.getTipoPeriodo(), gestion.getCantidadPeriodos());
+    }
+
+    @Transactional
+    public List<PeriodoEvaluacionResponse> sincronizarPeriodosConfigurados(GestionAcademica gestion, String tipoPeriodo, Integer cantidadPeriodos) {
+        String tipo = normalizarTipoPeriodo(tipoPeriodo);
+        int cantidad = normalizarCantidadPeriodos(cantidadPeriodos);
+
+        Map<Integer, PeriodoEvaluacion> existentes = periodoRepository
+                .findAllByIdInstitucionAndIdGestionAcademica(gestion.getIdInstitucion(), gestion.getId())
+                .stream()
+                .collect(Collectors.toMap(PeriodoEvaluacion::getNumeroPeriodo, Function.identity(), (a, b) -> a));
+
+        List<PeriodoEvaluacion> guardados = new ArrayList<>();
+        for (int numero = 1; numero <= cantidad; numero++) {
+            LocalDate inicio = calcularFechaInicio(gestion, cantidad, numero);
+            LocalDate fin = calcularFechaFin(gestion, cantidad, numero);
+            PeriodoEvaluacion periodo = existentes.get(numero);
+
+            if (periodo == null) {
+                PeriodoEvaluacion nuevo = periodoRepository.save(PeriodoEvaluacion.builder()
+                        .idInstitucion(gestion.getIdInstitucion())
+                        .idGestionAcademica(gestion.getId())
+                        .numeroPeriodo(numero)
+                        .tipoPeriodo(tipo)
+                        .fechaInicio(inicio)
+                        .fechaFin(fin)
+                        .estado(ESTADO_ABIERTO)
+                        .pesoSer(10)
+                        .pesoSaber(45)
+                        .pesoHacer(40)
+                        .pesoAuto(5)
+                        .build());
+                dimensionService.sincronizarPesosDefaultPeriodo(gestion.getIdInstitucion(), nuevo.getId());
+                guardados.add(nuevo);
+                continue;
+            }
+
+            if (!ESTADO_CERRADO.equals(periodo.getEstado())) {
+                periodo.setTipoPeriodo(tipo);
+                periodo.setFechaInicio(inicio);
+                periodo.setFechaFin(fin);
+                guardados.add(periodoRepository.save(periodo));
+            } else {
+                guardados.add(periodo);
+            }
+        }
+
+        return guardados.stream()
+                .sorted(Comparator.comparing(PeriodoEvaluacion::getNumeroPeriodo))
+                .map(PeriodoEvaluacionResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public void sincronizarGestionesDesdeConfiguracion(UUID idInstitucion, String tipoPeriodo, Integer cantidadPeriodos) {
+        String tipo = normalizarTipoPeriodo(tipoPeriodo);
+        int cantidad = normalizarCantidadPeriodos(cantidadPeriodos);
+        gestionAcademicaRepository.findAllByIdInstitucion(idInstitucion).stream()
+                .filter(g -> !"ANULADA".equals(g.getEstado()))
+                .forEach(g -> {
+                    g.setTipoPeriodo(tipo);
+                    g.setCantidadPeriodos(cantidad);
+                    gestionAcademicaRepository.save(g);
+                    sincronizarPeriodosConfigurados(g, tipo, cantidad);
+                });
     }
 
     @Transactional(readOnly = true)
@@ -155,7 +232,7 @@ public class PeriodoEvaluacionService {
     }
 
     private void validarDuracion(String tipoPeriodo, LocalDate fechaInicio, LocalDate fechaFin,
-                                  GestionAcademica gestion) {
+                                   GestionAcademica gestion) {
         long dias = ChronoUnit.DAYS.between(fechaInicio, fechaFin) + 1;
 
         Long maxDias = MAX_DIAS_POR_TIPO.get(tipoPeriodo);
@@ -173,5 +250,27 @@ public class PeriodoEvaluacionService {
             throw new IllegalArgumentException(
                     "La fecha fin del período (" + fechaFin + ") no puede ser posterior al fin de la gestión (" + gestion.getFechaFin() + ")");
         }
+    }
+
+    private String normalizarTipoPeriodo(String tipoPeriodo) {
+        return tipoPeriodo != null && !tipoPeriodo.isBlank() ? tipoPeriodo.trim().toUpperCase() : "BIMESTRAL";
+    }
+
+    private int normalizarCantidadPeriodos(Integer cantidadPeriodos) {
+        if (cantidadPeriodos == null) return 4;
+        return Math.max(1, Math.min(cantidadPeriodos, 12));
+    }
+
+    private LocalDate calcularFechaInicio(GestionAcademica gestion, int cantidadPeriodos, int numeroPeriodo) {
+        long dias = ChronoUnit.DAYS.between(gestion.getFechaInicio(), gestion.getFechaFin()) + 1;
+        long offset = ((long) (numeroPeriodo - 1) * dias) / cantidadPeriodos;
+        return gestion.getFechaInicio().plusDays(offset);
+    }
+
+    private LocalDate calcularFechaFin(GestionAcademica gestion, int cantidadPeriodos, int numeroPeriodo) {
+        if (numeroPeriodo == cantidadPeriodos) return gestion.getFechaFin();
+        long dias = ChronoUnit.DAYS.between(gestion.getFechaInicio(), gestion.getFechaFin()) + 1;
+        long offsetFinExclusivo = ((long) numeroPeriodo * dias) / cantidadPeriodos;
+        return gestion.getFechaInicio().plusDays(offsetFinExclusivo - 1);
     }
 }

@@ -10,6 +10,8 @@ public interface PeriodoEvaluacionRepository extends JpaRepository<PeriodoEvalua
 
     Optional<PeriodoEvaluacion> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
 
+    List<PeriodoEvaluacion> findAllByIdInstitucion(UUID idInstitucion);
+
     Optional<PeriodoEvaluacion> findByIdInstitucionAndIdGestionAcademicaAndNumeroPeriodo(
             UUID idInstitucion, UUID idGestionAcademica, Integer numeroPeriodo);
 

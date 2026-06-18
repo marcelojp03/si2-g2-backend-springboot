@@ -1,11 +1,13 @@
 package com.uagrm.si2g2.academico.application;
 
 import com.uagrm.si2g2.auditoria.application.AuditoriaService;
+import com.uagrm.si2g2.calificacion.application.PeriodoEvaluacionService;
 import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.academico.domain.GestionAcademica;
 import com.uagrm.si2g2.academico.domain.GestionAcademicaRepository;
 import com.uagrm.si2g2.academico.dto.GestionAcademicaRequest;
 import com.uagrm.si2g2.academico.dto.GestionAcademicaResponse;
+import com.uagrm.si2g2.institucion.application.ConfiguracionService;
 import com.uagrm.si2g2.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,8 @@ public class GestionAcademicaService {
 
     private final GestionAcademicaRepository repository;
     private final AuditoriaService auditoriaService;
+    private final ConfiguracionService configuracionService;
+    private final PeriodoEvaluacionService periodoEvaluacionService;
 
     @Transactional
     public GestionAcademicaResponse crear(GestionAcademicaRequest request) {
@@ -32,16 +36,20 @@ public class GestionAcademicaService {
         if (request.isActiva()) {
             repository.desactivarTodasPorInstitucion(idInstitucion);
         }
+        String tipoPeriodo = configuracionService.getText(idInstitucion, "TIPO_PERIODOS");
+        int cantidadPeriodos = configuracionService.getInt(idInstitucion, "CANTIDAD_PERIODOS");
         GestionAcademica g = GestionAcademica.builder()
                 .idInstitucion(idInstitucion)
                 .nombre(request.getNombre())
                 .fechaInicio(request.getFechaInicio())
                 .fechaFin(request.getFechaFin())
                 .activa(request.isActiva())
-                .tipoPeriodo(request.getTipoPeriodo() != null ? request.getTipoPeriodo() : "BIMESTRAL")
-                .cantidadPeriodos(request.getCantidadPeriodos() != null ? request.getCantidadPeriodos() : 4)
+                .tipoPeriodo(tipoPeriodo)
+                .cantidadPeriodos(cantidadPeriodos)
                 .build();
-        GestionAcademicaResponse resp = GestionAcademicaResponse.from(repository.save(g));
+        GestionAcademica saved = repository.save(g);
+        periodoEvaluacionService.sincronizarPeriodosConfigurados(saved);
+        GestionAcademicaResponse resp = GestionAcademicaResponse.from(saved);
         auditoriaService.registrar(idInstitucion, SecurityUtils.currentUserId(),
                 "ACADEMICO", "CREAR", "gestion_academica", resp.getId().toString(),
                 true, "Gestión creada: " + resp.getNombre());
@@ -72,17 +80,17 @@ public class GestionAcademicaService {
         if (request.isActiva() && !g.isActiva()) {
             repository.desactivarTodasPorInstitucion(idInstitucion);
         }
+        String tipoPeriodo = configuracionService.getText(idInstitucion, "TIPO_PERIODOS");
+        int cantidadPeriodos = configuracionService.getInt(idInstitucion, "CANTIDAD_PERIODOS");
         g.setNombre(request.getNombre());
         g.setFechaInicio(request.getFechaInicio());
         g.setFechaFin(request.getFechaFin());
         g.setActiva(request.isActiva());
-        if (request.getTipoPeriodo() != null) {
-            g.setTipoPeriodo(request.getTipoPeriodo());
-        }
-        if (request.getCantidadPeriodos() != null) {
-            g.setCantidadPeriodos(request.getCantidadPeriodos());
-        }
-        GestionAcademicaResponse resp = GestionAcademicaResponse.from(repository.save(g));
+        g.setTipoPeriodo(tipoPeriodo);
+        g.setCantidadPeriodos(cantidadPeriodos);
+        GestionAcademica saved = repository.save(g);
+        periodoEvaluacionService.sincronizarPeriodosConfigurados(saved);
+        GestionAcademicaResponse resp = GestionAcademicaResponse.from(saved);
         auditoriaService.registrar(TenantContext.get(), SecurityUtils.currentUserId(),
                 "ACADEMICO", "ACTUALIZAR", "gestion_academica", id.toString(),
                 true, "Gestión actualizada: " + resp.getNombre());

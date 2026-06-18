@@ -28,6 +28,19 @@ public class DimensionController {
         return ApiResponse.ok("Dimensiones disponibles", service.listarDisponibles());
     }
 
+    @GetMapping("/modelo-institucional")
+    @PreAuthorize("hasAnyAuthority('CONFIGURACION_READ','GESTIONES_READ','CALIFICACIONES_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    public ApiResponse<List<DimensionResponse>> listarModeloInstitucional() {
+        return ApiResponse.ok("Modelo institucional de evaluación", service.listarDisponibles());
+    }
+
+    @PutMapping("/modelo-institucional")
+    @PreAuthorize("hasAuthority('CONFIGURACION_WRITE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
+    public ApiResponse<List<DimensionResponse>> actualizarModeloInstitucional(
+            @Valid @RequestBody List<DimensionRequest> request) {
+        return ApiResponse.ok("Modelo institucional actualizado", service.actualizarModeloInstitucional(request));
+    }
+
     @GetMapping("/globales")
     @PreAuthorize("hasAuthority('GESTIONES_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR')")
     public ApiResponse<List<DimensionResponse>> listarGlobales() {

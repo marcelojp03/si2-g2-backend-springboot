@@ -1,6 +1,7 @@
 package com.uagrm.si2g2.institucion.application;
 
 import com.uagrm.si2g2.auditoria.application.AuditoriaService;
+import com.uagrm.si2g2.calificacion.application.PeriodoEvaluacionService;
 import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.institucion.domain.ConfiguracionInstitucion;
 import com.uagrm.si2g2.institucion.domain.ConfiguracionInstitucionRepository;
@@ -28,6 +29,7 @@ public class ConfiguracionService {
     private final ConfiguracionInstitucionRepository configuracionRepository;
     private final InstitucionRepository institucionRepository;
     private final AuditoriaService auditoriaService;
+    private final PeriodoEvaluacionService periodoEvaluacionService;
 
     private final Map<UUID, Map<String, String>> cache = new ConcurrentHashMap<>();
 
@@ -84,6 +86,7 @@ public class ConfiguracionService {
 
         ConfiguracionInstitucion saved = configuracionRepository.save(entity);
         cache.remove(idInstitucion);
+        sincronizarPeriodosSiCorresponde(idInstitucion, definition.getClave());
         auditoriaService.registrarDetallado(idInstitucion, SecurityUtils.currentUserId(), "CONFIGURACION",
                 "GUARDAR", "configuracion_institucion", saved.getId().toString(),
                 oldValue == null ? null : Map.of("valor", oldValue), Map.of("valor", normalizedValue),
@@ -101,6 +104,7 @@ public class ConfiguracionService {
         String oldValue = existing.getValor();
         configuracionRepository.delete(existing);
         cache.remove(idInstitucion);
+        sincronizarPeriodosSiCorresponde(idInstitucion, key);
         auditoriaService.registrarDetallado(idInstitucion, SecurityUtils.currentUserId(), "CONFIGURACION",
                 "RESET_DEFAULT", "configuracion_institucion", existing.getId().toString(),
                 Map.of("valor", oldValue), null, true,
@@ -194,5 +198,16 @@ public class ConfiguracionService {
             throw new IllegalArgumentException("El valor permitido para " + definition.getClave() + " debe ser uno de: " + String.join(", ", definition.getAllowedValues()));
         }
         return normalized;
+    }
+
+    private void sincronizarPeriodosSiCorresponde(UUID idInstitucion, String clave) {
+        if (!List.of("TIPO_PERIODOS", "CANTIDAD_PERIODOS").contains(clave)) return;
+
+        Map<String, String> configuracion = getResolvedConfigurationMap(idInstitucion);
+        periodoEvaluacionService.sincronizarGestionesDesdeConfiguracion(
+                idInstitucion,
+                configuracion.get("TIPO_PERIODOS"),
+                Integer.parseInt(configuracion.get("CANTIDAD_PERIODOS"))
+        );
     }
 }

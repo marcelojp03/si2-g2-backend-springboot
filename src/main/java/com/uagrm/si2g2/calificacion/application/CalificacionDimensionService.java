@@ -3,6 +3,8 @@ package com.uagrm.si2g2.calificacion.application;
 import com.uagrm.si2g2.calificacion.domain.*;
 import com.uagrm.si2g2.calificacion.dto.*;
 import com.uagrm.si2g2.common.SecurityUtils;
+import com.uagrm.si2g2.dimension.domain.PeriodoDimension;
+import com.uagrm.si2g2.dimension.domain.PeriodoDimensionRepository;
 import com.uagrm.si2g2.docente.domain.DocenteRepository;
 import com.uagrm.si2g2.estudiante.domain.Estudiante;
 import com.uagrm.si2g2.estudiante.domain.EstudianteRepository;
@@ -37,6 +39,7 @@ public class CalificacionDimensionService {
     private final EstudianteRepository estudianteRepository;
     private final MateriaRepository materiaRepository;
     private final DocenteRepository docenteRepository;
+    private final PeriodoDimensionRepository periodoDimensionRepository;
 
     public UUID obtenerDocenteId(UUID idUsuario) {
         return docenteRepository.findByIdUsuarioAndIdInstitucion(idUsuario, SecurityUtils.requireCurrentInstitutionId())
@@ -176,7 +179,7 @@ public class CalificacionDimensionService {
         }
 
         BigDecimal promedio = suma.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP);
-        return promedio.multiply(PESO_SABER).divide(PUNTAJE_MAXIMO, 2, RoundingMode.HALF_UP);
+        return promedio.multiply(pesoDimension(idPeriodo, "SABER", PESO_SABER)).divide(PUNTAJE_MAXIMO, 2, RoundingMode.HALF_UP);
     }
 
     public BigDecimal calcularHacerPorEstudiante(UUID idPeriodo, UUID idMateria, UUID idEstudiante) {
@@ -204,15 +207,16 @@ public class CalificacionDimensionService {
         }
 
         BigDecimal promedio = suma.divide(BigDecimal.valueOf(count), 2, RoundingMode.HALF_UP);
-        return promedio.multiply(PESO_HACER).divide(PUNTAJE_MAXIMO, 2, RoundingMode.HALF_UP);
+        return promedio.multiply(pesoDimension(idPeriodo, "HACER", PESO_HACER)).divide(PUNTAJE_MAXIMO, 2, RoundingMode.HALF_UP);
     }
 
     @Transactional
     public CalificacionSerResponse guardarSer(UUID idPeriodo, CalificacionSerRequest request) {
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
 
-        if (request.notaSer().compareTo(PESO_SER) > 0) {
-            throw new IllegalArgumentException("La nota SER no puede exceder " + PESO_SER + " puntos");
+        BigDecimal pesoSer = pesoDimension(idPeriodo, "SER", PESO_SER);
+        if (request.notaSer().compareTo(pesoSer) > 0) {
+            throw new IllegalArgumentException("La nota SER no puede exceder " + pesoSer + " puntos");
         }
 
         CalificacionSer calificacion = calificacionSerRepository
@@ -275,8 +279,9 @@ public class CalificacionDimensionService {
     public AutoevaluacionTrimestralResponse guardarAutoevaluacion(UUID idPeriodo, AutoevaluacionTrimestralRequest request) {
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
 
-        if (request.notaAutoevaluacion().compareTo(PESO_AUTO) > 0) {
-            throw new IllegalArgumentException("La nota de autoevaluación no puede exceder " + PESO_AUTO + " puntos");
+        BigDecimal pesoAuto = pesoDimension(idPeriodo, "AUTOEVALUACION", PESO_AUTO);
+        if (request.notaAutoevaluacion().compareTo(pesoAuto) > 0) {
+            throw new IllegalArgumentException("La nota de autoevaluación no puede exceder " + pesoAuto + " puntos");
         }
 
         AutoevaluacionTrimestral autoevaluacion = autoevaluacionRepository
@@ -333,5 +338,20 @@ public class CalificacionDimensionService {
         String nombreEstudiante = (estudiante != null) ? estudiante.getNombres() + " " + estudiante.getApellidos() : "";
 
         return ConsolidadoEstudianteResponse.calcular(idEstudiante, nombreEstudiante, saber, hacer, ser, auto);
+    }
+
+    private BigDecimal pesoDimension(UUID idPeriodo, String nombre, BigDecimal fallback) {
+        String normalizado = nombre.toUpperCase();
+        return periodoDimensionRepository.findAllByIdPeriodoEvaluacion(idPeriodo).stream()
+                .filter(pd -> nombreCoincide(pd, normalizado))
+                .findFirst()
+                .map(pd -> BigDecimal.valueOf(pd.getPonderacion()))
+                .orElse(fallback);
+    }
+
+    private boolean nombreCoincide(PeriodoDimension periodoDimension, String nombre) {
+        String actual = periodoDimension.getDimension().getNombre().toUpperCase();
+        if (actual.equals(nombre)) return true;
+        return nombre.equals("AUTOEVALUACION") && actual.equals("AUTO");
     }
 }

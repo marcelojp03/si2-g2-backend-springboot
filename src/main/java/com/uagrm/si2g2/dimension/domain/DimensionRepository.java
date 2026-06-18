@@ -14,7 +14,19 @@ public interface DimensionRepository extends JpaRepository<Dimension, UUID> {
 
     List<Dimension> findAllByIdInstitucionAndEstadoOrderByNombreAsc(UUID idInstitucion, String estado);
 
-    @Query("SELECT d FROM Dimension d WHERE d.estado = 'ACTIVO' AND (d.esGlobal = TRUE OR d.idInstitucion = :idInstitucion) ORDER BY d.nombre ASC")
+    @Query("""
+            SELECT d FROM Dimension d
+            WHERE d.estado = 'ACTIVO'
+              AND (d.idInstitucion = :idInstitucion OR (
+                    d.esGlobal = TRUE AND NOT EXISTS (
+                        SELECT i.id FROM Dimension i
+                        WHERE i.idInstitucion = :idInstitucion
+                          AND i.nombre = d.nombre
+                          AND i.estado = 'ACTIVO'
+                    )
+              ))
+            ORDER BY d.nombre ASC
+            """)
     List<Dimension> findDisponiblesParaInstitucion(@Param("idInstitucion") UUID idInstitucion);
 
     Optional<Dimension> findByIdInstitucionAndNombre(UUID idInstitucion, String nombre);
