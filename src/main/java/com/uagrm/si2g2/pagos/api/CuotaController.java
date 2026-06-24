@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import com.uagrm.si2g2.pagos.dto.EstadoPagoResponse;
+import com.uagrm.si2g2.pagos.dto.GenerarQrResponse;
+
 @RestController
 @RequestMapping("/api/cuotas")
 @RequiredArgsConstructor
@@ -85,5 +88,39 @@ public class CuotaController {
     public ResponseEntity<ApiResponse<List<PagoResponse>>> misPagos() {
         return ResponseEntity.ok(ApiResponse.ok("Mis pagos",
                 pagoService.misPagos(SecurityUtils.currentUserId())));
+    }
+
+    @PostMapping("/{idCuota}/generar-qr")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<GenerarQrResponse>> generarQr(
+            @PathVariable UUID idCuota) {
+        PagoResponse pago = pagoService.generarQrPago(idCuota);
+        GenerarQrResponse resp = GenerarQrResponse.builder()
+                .idPago(pago.getId())
+                .qrBase64(pago.getQrBase64())
+                .proveedor(pago.getProveedor())
+                .referenciaExterna(pago.getReferenciaExterna())
+                .build();
+        return ResponseEntity.ok(ApiResponse.ok("QR generado", resp));
+    }
+
+    @GetMapping("/pago/{idPago}/estado")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<EstadoPagoResponse>> estadoPago(
+            @PathVariable UUID idPago) {
+        PagoResponse pago = pagoService.consultarEstado(idPago);
+        boolean pagado = "COMPLETADO".equals(pago.getEstado());
+        EstadoPagoResponse resp = new EstadoPagoResponse(
+                pago.getId(), pago.getReferenciaExterna(),
+                pagado ? "PAG" : "PEN", pagado, pago.getEstado());
+        return ResponseEntity.ok(ApiResponse.ok("Estado del pago", resp));
+    }
+
+    @PostMapping("/pago/{idPago}/confirmar")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN')")
+    public ResponseEntity<ApiResponse<PagoResponse>> confirmarPago(
+            @PathVariable UUID idPago) {
+        return ResponseEntity.ok(ApiResponse.ok("Pago confirmado",
+                pagoService.confirmarPago(idPago)));
     }
 }
