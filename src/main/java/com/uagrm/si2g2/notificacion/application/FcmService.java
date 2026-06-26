@@ -80,6 +80,13 @@ public class FcmService {
             var response = FirebaseMessaging.getInstance().sendEachForMulticast(builder.build());
             log.info("[FCM] Enviado a {} dispositivos — éxito: {}, fallido: {}",
                     fcmTokens.size(), response.getSuccessCount(), response.getFailureCount());
+            if (response.getFailureCount() > 0) {
+                response.getResponses().forEach(r -> {
+                    if (r.getException() != null) {
+                        log.warn("[FCM] Error detallado: {} → {}", r.getMessageId() != null ? r.getMessageId() : "N/A", r.getException().getMessage());
+                    }
+                });
+            }
         } catch (FirebaseMessagingException e) {
             log.error("[FCM] Error enviando notificación multicast: {}", e.getMessage());
         }

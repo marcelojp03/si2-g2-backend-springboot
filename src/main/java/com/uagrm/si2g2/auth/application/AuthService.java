@@ -16,9 +16,11 @@ import com.uagrm.si2g2.auth.dto.RegisterRequest;
 import com.uagrm.si2g2.auditoria.application.AuditoriaService;
 import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.config.AppProperties;
+import com.uagrm.si2g2.estudiante.domain.EstudianteRepository;
 import com.uagrm.si2g2.persona.application.PersonaProvisioningService;
 import com.uagrm.si2g2.saas.suscripcion.domain.SuscripcionInstitucionRepository;
 import com.uagrm.si2g2.security.JwtService;
+import com.uagrm.si2g2.tutor.domain.TutorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
@@ -54,6 +56,8 @@ public class AuthService {
     private final AppProperties appProperties;
     private final SuscripcionInstitucionRepository suscripcionRepo;
     private final IntentoLoginService intentoLoginService;
+    private final EstudianteRepository estudianteRepository;
+    private final TutorRepository tutorRepository;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -276,9 +280,9 @@ public class AuthService {
                 .toList();
 
         Map<String, Object> claims = new HashMap<>();
+        String idInstitucion = usuario.getIdInstitucion() != null ? usuario.getIdInstitucion().toString() : null;
         if (usuario.getIdInstitucion() != null) {
-            claims.put("id_institucion", usuario.getIdInstitucion().toString());
-            // Incluir plan y módulos activos si la institución tiene suscripción vigente
+            claims.put("id_institucion", idInstitucion);
             suscripcionRepo.findActivaByIdInstitucion(usuario.getIdInstitucion()).ifPresent(s -> {
                 claims.put("plan_codigo", s.getPlan().getCodigo());
                 List<String> modulos = s.getPlan().getModulos().stream()
@@ -293,11 +297,34 @@ public class AuthService {
 
         String token = jwtService.generateToken(claims, usuario);
 
+        String idEstudiante = null;
+        String idTutor = null;
+        if (usuario.getIdInstitucion() != null) {
+            if (roles.contains("ESTUDIANTE")) {
+                idEstudiante = estudianteRepository
+                        .findByIdUsuarioAndIdInstitucion(usuario.getId(), usuario.getIdInstitucion())
+                        .map(e -> e.getId().toString())
+                        .orElse(null);
+            }
+            if (roles.contains("TUTOR")) {
+                idTutor = tutorRepository
+                        .findByIdUsuarioAndIdInstitucion(usuario.getId(), usuario.getIdInstitucion())
+                        .map(t -> t.getId().toString())
+                        .orElse(null);
+            }
+        }
+
         return AuthResponse.builder()
                 .token(token)
+                .id(usuario.getId().toString())
+                .nombres(usuario.getNombres())
+                .apellidos(usuario.getApellidos())
                 .correo(usuario.getCorreo())
+                .idInstitucion(idInstitucion)
                 .roles(roles)
                 .permisos(permisos)
+                .idEstudiante(idEstudiante)
+                .idTutor(idTutor)
                 .requiereCambioContrasena(usuario.isRequiereCambioContrasena())
                 .build();
     }

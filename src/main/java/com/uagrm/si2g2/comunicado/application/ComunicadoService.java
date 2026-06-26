@@ -7,6 +7,7 @@ import com.uagrm.si2g2.comunicado.domain.Comunicado;
 import com.uagrm.si2g2.comunicado.domain.ComunicadoRepository;
 import com.uagrm.si2g2.comunicado.dto.ComunicadoRequest;
 import com.uagrm.si2g2.comunicado.dto.ComunicadoResponse;
+import com.uagrm.si2g2.notificacion.application.FcmService;
 import com.uagrm.si2g2.notificacion.application.NotificacionService;
 import com.uagrm.si2g2.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
@@ -28,6 +29,7 @@ public class ComunicadoService {
     private final ComunicadoRepository repository;
     private final AuditoriaService auditoriaService;
     private final NotificacionService notificacionService;
+    private final FcmService fcmService;
     private final UsuarioRepository usuarioRepository;
 
     private static final int MAX_LIMITE = 200;
@@ -120,12 +122,24 @@ public class ComunicadoService {
             );
             var roles = rolesPorDestinatario.getOrDefault(c.getDestinatarios(), List.of("DOCENTE", "ESTUDIANTE"));
             var usuarios = usuarioRepository.findByIdInstitucionAndRoles(c.getIdInstitucion(), roles);
+            var fcmTokens = new java.util.ArrayList<String>();
             for (var u : usuarios) {
                 notificacionService.crearParaUsuario(
                         c.getIdInstitucion(), u.getId(),
                         c.getTitulo(),
                         c.getContenido().length() > 200 ? c.getContenido().substring(0, 200) + "..." : c.getContenido(),
                         "COMUNICADO", "comunicado", c.getId());
+                if (u.getFcmToken() != null && !u.getFcmToken().isBlank()) {
+                    fcmTokens.add(u.getFcmToken());
+                }
+            }
+            if (!fcmTokens.isEmpty()) {
+                var contenido = c.getContenido().length() > 200
+                        ? c.getContenido().substring(0, 200) + "..."
+                        : c.getContenido();
+                fcmService.enviarAMultiplesDispositivos(
+                        fcmTokens, c.getTitulo(), contenido,
+                        java.util.Map.of("tipo", "COMUNICADO", "id", c.getId().toString()));
             }
         } catch (Exception e) {
             log.warn("Error al notificar destinatarios del comunicado {}: {}", c.getId(), e.getMessage());

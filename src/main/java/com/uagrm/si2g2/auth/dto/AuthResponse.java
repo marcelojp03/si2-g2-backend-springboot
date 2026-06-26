@@ -10,8 +10,14 @@ import java.util.List;
 public class AuthResponse {
 
     private String token;
+    private String id;
+    private String nombres;
+    private String apellidos;
     private String correo;
+    private String idInstitucion;
     private List<String> roles;
     private List<String> permisos;
+    private String idEstudiante;
+    private String idTutor;
     private boolean requiereCambioContrasena;
 }
