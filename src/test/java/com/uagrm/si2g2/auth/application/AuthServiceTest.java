@@ -10,9 +10,11 @@ import com.uagrm.si2g2.auth.dto.PasswordRecoveryRequest;
 import com.uagrm.si2g2.auth.dto.PasswordRecoveryResponse;
 import com.uagrm.si2g2.auth.dto.RegisterRequest;
 import com.uagrm.si2g2.config.AppProperties;
+import com.uagrm.si2g2.estudiante.domain.EstudianteRepository;
 import com.uagrm.si2g2.persona.application.PersonaProvisioningService;
 import com.uagrm.si2g2.saas.suscripcion.domain.SuscripcionInstitucionRepository;
 import com.uagrm.si2g2.security.JwtService;
+import com.uagrm.si2g2.tutor.domain.TutorRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -68,6 +70,12 @@ class AuthServiceTest {
     @Mock
     private IntentoLoginService intentoLoginService;
 
+    @Mock
+    private EstudianteRepository estudianteRepository;
+
+    @Mock
+    private TutorRepository tutorRepository;
+
     private AuthService authService;
 
     private AppProperties appProperties;
@@ -102,7 +110,9 @@ class AuthServiceTest {
                 personaProvisioningService,
                 appProperties,
                 suscripcionInstitucionRepository,
-                intentoLoginService
+                intentoLoginService,
+                estudianteRepository,
+                tutorRepository
         );
     }
 
