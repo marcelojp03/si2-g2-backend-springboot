@@ -20,6 +20,7 @@ public class AlertaRiesgoService {
 
     private final AlertaRiesgoRepository repository;
     private final RecomendacionIaRepository recomendacionRepository;
+    private final RiesgoAcademicoService riesgoAcademicoService;
 
     @Transactional(readOnly = true)
     public List<AlertaRiesgoResponse> listar(UUID idInstitucion, UUID idGestion, String nivel) {
@@ -44,5 +45,10 @@ public class AlertaRiesgoService {
     public List<RecomendacionIaResponse> recomendaciones(UUID idAlerta) {
         return recomendacionRepository.findByIdAlertaRiesgoOrderByCreadoEnDesc(idAlerta)
                 .stream().map(RecomendacionIaResponse::from).toList();
+    }
+
+    @Transactional
+    public AlertaRiesgoResponse actualizarEstado(UUID idAlerta, String estado) {
+        return AlertaRiesgoResponse.from(riesgoAcademicoService.actualizarEstado(idAlerta, estado));
     }
 }

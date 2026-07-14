@@ -19,6 +19,13 @@ public class AlertaRiesgoResponse {
     private String nivelRiesgo;
     private String motivo;
     private BigDecimal scoreIa;
+    private BigDecimal porcentajeAsistencia;
+    private BigDecimal promedioCalificaciones;
+    private String tendenciaNotas;
+    private Integer evaluacionesPendientes;
+    private Integer materiasReprobadasHistorial;
+    private String factoresJson;
+    private String estadoAlerta;
     private Boolean activa;
     private Instant procesadoEn;
     private Instant creadoEn;
@@ -32,6 +39,13 @@ public class AlertaRiesgoResponse {
                 .nivelRiesgo(a.getNivelRiesgo())
                 .motivo(a.getMotivo())
                 .scoreIa(a.getScoreIa())
+                .porcentajeAsistencia(a.getPorcentajeAsistencia())
+                .promedioCalificaciones(a.getPromedioCalificaciones())
+                .tendenciaNotas(a.getTendenciaNotas())
+                .evaluacionesPendientes(a.getEvaluacionesPendientes())
+                .materiasReprobadasHistorial(a.getMateriasReprobadasHistorial())
+                .factoresJson(a.getFactoresJson())
+                .estadoAlerta(a.getEstadoAlerta())
                 .activa(a.getActiva())
                 .procesadoEn(a.getProcesadoEn())
                 .creadoEn(a.getCreadoEn())

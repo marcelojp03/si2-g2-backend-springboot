@@ -32,6 +32,12 @@ public interface AlertaRiesgoRepository extends JpaRepository<AlertaRiesgo, UUID
 
     List<AlertaRiesgo> findByIdEstudianteAndActivaTrue(UUID idEstudiante);
 
+    Optional<AlertaRiesgo> findTopByIdEstudianteAndIdGestionAcademicaAndActivaTrueOrderByProcesadoEnDesc(
+            UUID idEstudiante, UUID idGestionAcademica);
+
+    long countByIdInstitucionAndIdGestionAcademicaAndNivelRiesgoAndActivaTrue(
+            UUID idInstitucion, UUID idGestionAcademica, String nivelRiesgo);
+
     @Modifying
     @Query("UPDATE AlertaRiesgo a SET a.activa = false, a.actualizadoEn = CURRENT_TIMESTAMP WHERE a.idInstitucion = :idInst AND a.idGestionAcademica = :idGes AND a.activa = true")
     int desactivarPorGestion(@Param("idInst") UUID idInst, @Param("idGes") UUID idGes);

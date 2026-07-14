@@ -39,6 +39,30 @@ public class AlertaRiesgo {
     @Column(name = "score_ia", precision = 5, scale = 4)
     private BigDecimal scoreIa;
 
+    @Column(name = "porcentaje_asistencia", precision = 5, scale = 2)
+    private BigDecimal porcentajeAsistencia;
+
+    @Column(name = "promedio_calificaciones", precision = 5, scale = 2)
+    private BigDecimal promedioCalificaciones;
+
+    @Column(name = "tendencia_notas", length = 20)
+    private String tendenciaNotas;
+
+    @Builder.Default
+    @Column(name = "evaluaciones_pendientes", nullable = false)
+    private Integer evaluacionesPendientes = 0;
+
+    @Builder.Default
+    @Column(name = "materias_reprobadas_historial", nullable = false)
+    private Integer materiasReprobadasHistorial = 0;
+
+    @Column(name = "factores_json", columnDefinition = "TEXT")
+    private String factoresJson;
+
+    @Builder.Default
+    @Column(name = "estado_alerta", nullable = false, length = 20)
+    private String estadoAlerta = "ABIERTA";
+
     @Builder.Default
     @Column(name = "activa", nullable = false)
     private Boolean activa = true;
