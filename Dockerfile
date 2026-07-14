@@ -21,10 +21,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY --from=builder /app/target/*.jar app.jar
 
-# Credenciales Firebase (fuera del repo por .gitignore; debe existir en contexto build)
-COPY gestion-academica-firebase.json .
-
-RUN chown appuser:appgroup app.jar gestion-academica-firebase.json
+RUN chown appuser:appgroup app.jar
 
 USER appuser
 

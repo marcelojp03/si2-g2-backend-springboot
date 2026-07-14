@@ -31,6 +31,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,6 +122,7 @@ public class AuthService {
         return idInstitucion;
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         try {
             authenticationManager.authenticate(
@@ -143,6 +145,8 @@ public class AuthService {
 
         Usuario usuario = usuarioRepository.findByCorreo(request.getCorreo())
                 .orElseThrow();
+        usuario.setUltimoAcceso(Instant.now());
+        usuarioRepository.save(usuario);
 
         log.info("Login exitoso: correo={}, roles={}", usuario.getCorreo(),
                 usuario.getRoles().stream().map(Rol::getCodigo).collect(Collectors.joining(",")));
@@ -320,6 +324,8 @@ public class AuthService {
                 .nombres(usuario.getNombres())
                 .apellidos(usuario.getApellidos())
                 .correo(usuario.getCorreo())
+                .fotoUrl(null)
+                .ultimoAcceso(usuario.getUltimoAcceso())
                 .idInstitucion(idInstitucion)
                 .roles(roles)
                 .permisos(permisos)
