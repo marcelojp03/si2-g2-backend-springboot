@@ -6,5 +6,7 @@ import java.util.UUID;
 
 public record AnalizarRiesgoRequest(
         @NotNull UUID idParalelo,
-        @NotNull UUID idGestion
+        @NotNull UUID idGestion,
+        UUID idPeriodo,
+        UUID idMateria
 ) {}

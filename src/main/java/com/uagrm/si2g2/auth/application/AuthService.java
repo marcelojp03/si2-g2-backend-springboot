@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Locale;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,26 +125,27 @@ public class AuthService {
 
     @Transactional
     public AuthResponse login(LoginRequest request) {
+        String correo = request.getCorreo().trim().toLowerCase(Locale.ROOT);
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getCorreo(), request.getContrasena())
+                    new UsernamePasswordAuthenticationToken(correo, request.getContrasena())
             );
         } catch (BadCredentialsException e) {
-            log.warn("Login fallido: correo={}", request.getCorreo());
+            log.warn("Login fallido: correo={}", correo);
             // Resolver usuario si existe para obtener idInstitucion
-            Usuario usuarioFallido = usuarioRepository.findByCorreo(request.getCorreo()).orElse(null);
+            Usuario usuarioFallido = usuarioRepository.findByCorreo(correo).orElse(null);
             intentoLoginService.registrarFallo(
-                    request.getCorreo(),
+                    correo,
                     "CREDENCIALES_INVALIDAS",
                     usuarioFallido != null ? usuarioFallido.getId() : null,
                     usuarioFallido != null ? usuarioFallido.getIdInstitucion() : null);
             auditoriaService.registrar(null, null,
                     "AUTH", "LOGIN_FALLIDO", "usuario", null,
-                    false, "Credenciales incorrectas para: " + request.getCorreo());
+                    false, "Credenciales incorrectas para: " + correo);
             throw e;
         }
 
-        Usuario usuario = usuarioRepository.findByCorreo(request.getCorreo())
+        Usuario usuario = usuarioRepository.findByCorreo(correo)
                 .orElseThrow();
         usuario.setUltimoAcceso(Instant.now());
         usuarioRepository.save(usuario);

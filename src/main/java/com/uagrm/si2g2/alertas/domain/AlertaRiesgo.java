@@ -60,6 +60,13 @@ public class AlertaRiesgo {
     private String factoresJson;
 
     @Builder.Default
+    @Column(name = "datos_vigentes", nullable = false)
+    private Boolean datosVigentes = true;
+
+    @Column(name = "ultima_evaluacion_valida_en")
+    private Instant ultimaEvaluacionValidaEn;
+
+    @Builder.Default
     @Column(name = "estado_alerta", nullable = false, length = 20)
     private String estadoAlerta = "ABIERTA";
 

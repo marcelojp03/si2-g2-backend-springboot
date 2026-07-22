@@ -33,6 +33,9 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(appProperties.getCors().getAllowedOrigins());
+        if (!appProperties.getCors().getAllowedOriginPatterns().isEmpty()) {
+            config.setAllowedOriginPatterns(appProperties.getCors().getAllowedOriginPatterns());
+        }
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(false);

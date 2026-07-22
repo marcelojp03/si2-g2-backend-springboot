@@ -95,6 +95,16 @@ public class CalificacionPeriodoController {
         return ResponseEntity.ok(ApiResponse.ok("Calificacion SER", response));
     }
 
+    @GetMapping("/{idPeriodo}/ser")
+    @PreAuthorize("hasAnyAuthority('CALIFICACIONES_READ','CALIFICACIONES_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
+    public ResponseEntity<ApiResponse<List<CalificacionSerResponse>>> listarSer(
+            @PathVariable UUID idPeriodo,
+            @RequestParam UUID idMateria,
+            @RequestParam UUID idParalelo) {
+        return ResponseEntity.ok(ApiResponse.ok("Calificaciones SER",
+                dimensionService.listarSerPorMateria(idPeriodo, idMateria, idParalelo)));
+    }
+
     @PostMapping("/{idPeriodo}/ser")
     @PreAuthorize("hasAnyAuthority('CALIFICACIONES_CREATE','CALIFICACIONES_UPDATE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
     public ResponseEntity<ApiResponse<CalificacionSerResponse>> guardarSer(
@@ -136,6 +146,16 @@ public class CalificacionPeriodoController {
         return ResponseEntity.ok(ApiResponse.ok("Autoevaluacion", response));
     }
 
+    @GetMapping("/{idPeriodo}/autoevaluacion")
+    @PreAuthorize("hasAnyAuthority('CALIFICACIONES_READ','CALIFICACIONES_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
+    public ResponseEntity<ApiResponse<List<AutoevaluacionTrimestralResponse>>> listarAutoevaluaciones(
+            @PathVariable UUID idPeriodo,
+            @RequestParam UUID idMateria,
+            @RequestParam UUID idParalelo) {
+        return ResponseEntity.ok(ApiResponse.ok("Autoevaluaciones",
+                dimensionService.listarAutoevaluacionesPorMateria(idPeriodo, idMateria, idParalelo)));
+    }
+
     @PostMapping("/{idPeriodo}/autoevaluacion")
     @PreAuthorize("hasAnyAuthority('CALIFICACIONES_CREATE','CALIFICACIONES_UPDATE') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','ESTUDIANTE')")
     public ResponseEntity<ApiResponse<AutoevaluacionTrimestralResponse>> guardarAutoevaluacion(
@@ -154,6 +174,16 @@ public class CalificacionPeriodoController {
             @PathVariable UUID idMateria) {
         return ResponseEntity.ok(ApiResponse.ok("Consolidado del estudiante",
                 dimensionService.obtenerConsolidadoEstudiante(idPeriodo, idEstudiante, idMateria)));
+    }
+
+    @GetMapping("/{idPeriodo}/consolidado")
+    @PreAuthorize("hasAnyAuthority('CALIFICACIONES_READ','CALIFICACIONES_READ_ALL','MI_AREA_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','DOCENTE')")
+    public ResponseEntity<ApiResponse<List<ConsolidadoEstudianteResponse>>> listarConsolidados(
+            @PathVariable UUID idPeriodo,
+            @RequestParam UUID idMateria,
+            @RequestParam UUID idParalelo) {
+        return ResponseEntity.ok(ApiResponse.ok("Consolidado del paralelo",
+                dimensionService.listarConsolidadosPorMateria(idPeriodo, idMateria, idParalelo)));
     }
 
     @PostMapping("/{idPeriodo}/cerrar")

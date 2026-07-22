@@ -34,13 +34,13 @@ public class GestionAcademicaController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('GESTIONES_READ')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE') or hasAuthority('GESTIONES_READ')")
     public ResponseEntity<ApiResponse<List<GestionAcademicaResponse>>> listar() {
         return ResponseEntity.ok(ApiResponse.ok("Gestiones académicas", service.listar()));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('GESTIONES_READ')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE') or hasAuthority('GESTIONES_READ')")
     public ResponseEntity<ApiResponse<GestionAcademicaResponse>> obtener(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Gestión académica", service.obtener(id)));
     }
@@ -61,7 +61,7 @@ public class GestionAcademicaController {
     }
 
     @GetMapping("/{id}/periodos")
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('GESTIONES_READ')")
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE') or hasAuthority('GESTIONES_READ')")
     public ResponseEntity<ApiResponse<List<PeriodoEvaluacionResponse>>> listarPeriodos(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok("Periodos de la gestión", periodoService.listarPorGestion(id)));
     }

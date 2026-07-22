@@ -13,6 +13,7 @@ public record DashboardInstitucionalResponse(
         List<DashboardKpi> kpis,
         List<DashboardChart> graficos,
         List<DashboardAlert> alertas,
+        List<DashboardRiesgoAcademicoAlert> alertasRiesgoAcademico,
         List<DashboardAction> tareasPendientes,
         List<DashboardAction> accesosRapidos,
         List<String> modulosDisponibles,

@@ -67,6 +67,8 @@ public class AppProperties {
 
         @NotEmpty
         private List<String> allowedOrigins = new ArrayList<>();
+
+        private List<String> allowedOriginPatterns = new ArrayList<>();
     }
 
     @Getter

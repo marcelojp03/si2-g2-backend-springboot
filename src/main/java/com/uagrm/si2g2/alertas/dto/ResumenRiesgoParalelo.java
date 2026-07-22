@@ -7,6 +7,8 @@ public record ResumenRiesgoParalelo(
         UUID idParalelo,
         String nombreParalelo,
         int totalEstudiantes,
+        int totalConDatos,
+        int totalSinDatos,
         int estudiantesEnRiesgo,
         BigDecimal porcentajeRiesgo,
         BigDecimal scorePromedio

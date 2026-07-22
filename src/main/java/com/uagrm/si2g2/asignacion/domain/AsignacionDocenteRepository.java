@@ -23,7 +23,14 @@ public interface AsignacionDocenteRepository extends JpaRepository<AsignacionDoc
         boolean existsByIdInstitucionAndIdDocenteAndIdMateriaAndIdParaleloAndIdGestion(
                         UUID idInstitucion, UUID idDocente, UUID idMateria, UUID idParalelo, UUID idGestion);
 
+        boolean existsByIdInstitucionAndIdDocenteAndIdMateriaAndIdParaleloAndIdGestionAndEstado(
+                        UUID idInstitucion, UUID idDocente, UUID idMateria, UUID idParalelo, UUID idGestion,
+                        String estado);
+
         boolean existsByIdDocenteAndIdMateriaAndEstado(UUID idDocente, UUID idMateria, String estado);
+
+        boolean existsByIdInstitucionAndIdDocenteAndIdParaleloAndIdGestionAndEstado(
+                        UUID idInstitucion, UUID idDocente, UUID idParalelo, UUID idGestion, String estado);
 
         List<AsignacionDocente> findByIdMateriaAndIdInstitucionAndEstado(UUID idMateria, UUID idInstitucion,
                         String estado);

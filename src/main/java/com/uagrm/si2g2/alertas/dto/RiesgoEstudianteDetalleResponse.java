@@ -20,7 +20,9 @@ public record RiesgoEstudianteDetalleResponse(
         int evaluacionesPendientes,
         int materiasReprobadasHistorial,
         String estadoAlerta,
+        String estadoAnalisis,
         List<FactorContribuyente> factores,
         List<String> recomendaciones,
-        List<EvolucionNotaResponse> evolucionNotas
+        List<EvolucionNotaResponse> evolucionNotas,
+        List<DesgloseMateriaResponse> desgloseMaterias
 ) {}

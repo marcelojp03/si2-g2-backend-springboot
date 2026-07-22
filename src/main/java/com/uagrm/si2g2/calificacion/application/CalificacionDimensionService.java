@@ -1,5 +1,6 @@
 package com.uagrm.si2g2.calificacion.application;
 
+import com.uagrm.si2g2.asignacion.domain.AsignacionDocenteRepository;
 import com.uagrm.si2g2.calificacion.domain.*;
 import com.uagrm.si2g2.calificacion.dto.*;
 import com.uagrm.si2g2.common.SecurityUtils;
@@ -8,16 +9,26 @@ import com.uagrm.si2g2.dimension.domain.PeriodoDimensionRepository;
 import com.uagrm.si2g2.docente.domain.DocenteRepository;
 import com.uagrm.si2g2.estudiante.domain.Estudiante;
 import com.uagrm.si2g2.estudiante.domain.EstudianteRepository;
+import com.uagrm.si2g2.inscripcion.domain.Inscripcion;
+import com.uagrm.si2g2.inscripcion.domain.InscripcionRepository;
 import com.uagrm.si2g2.materia.domain.MateriaRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +51,11 @@ public class CalificacionDimensionService {
     private final MateriaRepository materiaRepository;
     private final DocenteRepository docenteRepository;
     private final PeriodoDimensionRepository periodoDimensionRepository;
+    private final EvaluacionRepository evaluacionRepository;
+    private final CalificacionRepository calificacionRepository;
+    private final InscripcionRepository inscripcionRepository;
+    private final AsignacionDocenteRepository asignacionDocenteRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     public UUID obtenerDocenteId(UUID idUsuario) {
         return docenteRepository.findByIdUsuarioAndIdInstitucion(idUsuario, SecurityUtils.requireCurrentInstitutionId())
@@ -121,6 +137,21 @@ public class CalificacionDimensionService {
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
         ActividadEvaluativa actividad = actividadRepository.findByIdAndIdInstitucion(request.idActividad(), idInstitucion)
                 .orElseThrow(() -> new EntityNotFoundException("Actividad no encontrada"));
+        PeriodoEvaluacion periodo = periodoRepository
+                .findByIdAndIdInstitucion(actividad.getIdPeriodoEvaluacion(), idInstitucion)
+                .orElseThrow(() -> new EntityNotFoundException("Periodo no encontrado"));
+        boolean vinculadaALegacy = evaluacionRepository
+                .findByIdAndIdInstitucion(actividad.getId(), idInstitucion).isPresent();
+        Set<UUID> estudiantesActualizados = request.detalles().stream()
+                .filter(detalle -> detalle.notaObtenida() != null)
+                .map(CalificacionActividadDetalleRequest::idEstudiante)
+                .collect(Collectors.toSet());
+
+        if (!estudiantesActualizados.isEmpty() && "BORRADOR".equals(actividad.getEstado())) {
+            actividad.setEstado("PUBLICADA");
+            actividad.setPublicadoEn(java.time.Instant.now());
+            actividadRepository.save(actividad);
+        }
 
         List<CalificacionActividad> resultados = new java.util.ArrayList<>();
         for (CalificacionActividadDetalleRequest detalle : request.detalles()) {
@@ -145,8 +176,38 @@ public class CalificacionDimensionService {
             calificacion.setIdUsuarioModificacion(SecurityUtils.currentUserId());
 
             resultados.add(calificacionActividadRepository.save(calificacion));
+            if (vinculadaALegacy && detalle.notaObtenida() != null) {
+                sincronizarCalificacionLegacy(idInstitucion, periodo, actividad, detalle);
+            }
+        }
+        if (!estudiantesActualizados.isEmpty()) {
+            eventPublisher.publishEvent(new CalificacionesActualizadasEvent(
+                    idInstitucion, periodo.getIdGestionAcademica(), estudiantesActualizados));
         }
         return resultados.stream().map(CalificacionActividadResponse::from).toList();
+    }
+
+    private void sincronizarCalificacionLegacy(UUID idInstitucion, PeriodoEvaluacion periodo,
+                                                ActividadEvaluativa actividad,
+                                                CalificacionActividadDetalleRequest detalle) {
+        Inscripcion inscripcion = inscripcionRepository
+                .findAllByIdInstitucionAndIdEstudiante(idInstitucion, detalle.idEstudiante()).stream()
+                .filter(i -> periodo.getIdGestionAcademica().equals(i.getIdGestion()))
+                .filter(i -> "ACTIVA".equals(i.getEstado()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El estudiante no tiene una inscripcion activa en la gestion del periodo"));
+        Calificacion legacy = calificacionRepository
+                .findByIdEvaluacionAndIdInscripcion(actividad.getId(), inscripcion.getId())
+                .orElseGet(() -> Calificacion.builder()
+                        .idInstitucion(idInstitucion)
+                        .idEvaluacion(actividad.getId())
+                        .idInscripcion(inscripcion.getId())
+                        .build());
+        legacy.setNotaNumerica(detalle.notaObtenida());
+        legacy.setNotaLiteral(null);
+        legacy.setRegistradoPor(SecurityUtils.currentUserId());
+        calificacionRepository.save(legacy);
     }
 
     @Transactional(readOnly = true)
@@ -213,6 +274,8 @@ public class CalificacionDimensionService {
     @Transactional
     public CalificacionSerResponse guardarSer(UUID idPeriodo, CalificacionSerRequest request) {
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        PeriodoEvaluacion periodo = periodoRepository.findByIdAndIdInstitucion(idPeriodo, idInstitucion)
+                .orElseThrow(() -> new EntityNotFoundException("Periodo no encontrado"));
 
         BigDecimal pesoSer = pesoDimension(idPeriodo, "SER", PESO_SER);
         if (request.notaSer().compareTo(pesoSer) > 0) {
@@ -237,7 +300,10 @@ public class CalificacionDimensionService {
         }
         calificacion.setIdUsuarioModificacion(SecurityUtils.currentUserId());
 
-        return CalificacionSerResponse.from(calificacionSerRepository.save(calificacion));
+        CalificacionSerResponse response = CalificacionSerResponse.from(calificacionSerRepository.save(calificacion));
+        eventPublisher.publishEvent(new CalificacionesActualizadasEvent(
+                idInstitucion, periodo.getIdGestionAcademica(), Set.of(request.idEstudiante())));
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -247,6 +313,27 @@ public class CalificacionDimensionService {
                 .findByIdInstitucionAndIdPeriodoEvaluacionAndIdMateriaAndIdEstudiante(idInstitucion, idPeriodo, idMateria, idEstudiante)
                 .map(CalificacionSerResponse::from)
                 .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CalificacionSerResponse> listarSerPorMateria(
+            UUID idPeriodo, UUID idMateria, UUID idParalelo) {
+        AlcanceCalificaciones alcance = resolverAlcance(idPeriodo, idMateria, idParalelo);
+        if (alcance.estudiantes().isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, CalificacionSer> porEstudiante = calificacionSerRepository
+                .findAllByIdInstitucionAndIdPeriodoEvaluacionAndIdMateriaAndIdEstudianteIn(
+                        alcance.idInstitucion(), idPeriodo, idMateria, alcance.idsEstudiante())
+                .stream()
+                .collect(Collectors.toMap(CalificacionSer::getIdEstudiante, Function.identity()));
+
+        return alcance.estudiantes().stream()
+                .map(estudiante -> porEstudiante.get(estudiante.getId()))
+                .filter(java.util.Objects::nonNull)
+                .map(CalificacionSerResponse::from)
+                .toList();
     }
 
     @Transactional
@@ -278,6 +365,8 @@ public class CalificacionDimensionService {
     @Transactional
     public AutoevaluacionTrimestralResponse guardarAutoevaluacion(UUID idPeriodo, AutoevaluacionTrimestralRequest request) {
         UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        PeriodoEvaluacion periodo = periodoRepository.findByIdAndIdInstitucion(idPeriodo, idInstitucion)
+                .orElseThrow(() -> new EntityNotFoundException("Periodo no encontrado"));
 
         BigDecimal pesoAuto = pesoDimension(idPeriodo, "AUTOEVALUACION", PESO_AUTO);
         if (request.notaAutoevaluacion().compareTo(pesoAuto) > 0) {
@@ -302,7 +391,11 @@ public class CalificacionDimensionService {
         }
         autoevaluacion.setIdUsuarioModificacion(SecurityUtils.currentUserId());
 
-        return AutoevaluacionTrimestralResponse.from(autoevaluacionRepository.save(autoevaluacion));
+        AutoevaluacionTrimestralResponse response = AutoevaluacionTrimestralResponse.from(
+                autoevaluacionRepository.save(autoevaluacion));
+        eventPublisher.publishEvent(new CalificacionesActualizadasEvent(
+                idInstitucion, periodo.getIdGestionAcademica(), Set.of(request.idEstudiante())));
+        return response;
     }
 
     @Transactional(readOnly = true)
@@ -312,6 +405,27 @@ public class CalificacionDimensionService {
                 .findByIdInstitucionAndIdPeriodoEvaluacionAndIdMateriaAndIdEstudiante(idInstitucion, idPeriodo, idMateria, idEstudiante)
                 .map(AutoevaluacionTrimestralResponse::from)
                 .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AutoevaluacionTrimestralResponse> listarAutoevaluacionesPorMateria(
+            UUID idPeriodo, UUID idMateria, UUID idParalelo) {
+        AlcanceCalificaciones alcance = resolverAlcance(idPeriodo, idMateria, idParalelo);
+        if (alcance.estudiantes().isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, AutoevaluacionTrimestral> porEstudiante = autoevaluacionRepository
+                .findAllByIdInstitucionAndIdPeriodoEvaluacionAndIdMateriaAndIdEstudianteIn(
+                        alcance.idInstitucion(), idPeriodo, idMateria, alcance.idsEstudiante())
+                .stream()
+                .collect(Collectors.toMap(AutoevaluacionTrimestral::getIdEstudiante, Function.identity()));
+
+        return alcance.estudiantes().stream()
+                .map(estudiante -> porEstudiante.get(estudiante.getId()))
+                .filter(java.util.Objects::nonNull)
+                .map(AutoevaluacionTrimestralResponse::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -338,6 +452,132 @@ public class CalificacionDimensionService {
         String nombreEstudiante = (estudiante != null) ? estudiante.getNombres() + " " + estudiante.getApellidos() : "";
 
         return ConsolidadoEstudianteResponse.calcular(idEstudiante, nombreEstudiante, saber, hacer, ser, auto);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ConsolidadoEstudianteResponse> listarConsolidadosPorMateria(
+            UUID idPeriodo, UUID idMateria, UUID idParalelo) {
+        AlcanceCalificaciones alcance = resolverAlcance(idPeriodo, idMateria, idParalelo);
+        if (alcance.estudiantes().isEmpty()) {
+            return List.of();
+        }
+
+        List<ActividadEvaluativa> actividades = actividadRepository
+                .findAllByIdInstitucionAndIdPeriodoEvaluacionAndIdMateria(
+                        alcance.idInstitucion(), idPeriodo, idMateria)
+                .stream()
+                .filter(actividad -> "SABER".equals(actividad.getDimension())
+                        || "HACER".equals(actividad.getDimension()))
+                .toList();
+        List<UUID> idsActividad = actividades.stream().map(ActividadEvaluativa::getId).toList();
+
+        Map<UUID, Map<UUID, BigDecimal>> notasPorEstudiante = new HashMap<>();
+        if (!idsActividad.isEmpty()) {
+            calificacionActividadRepository
+                    .findAllByIdInstitucionAndIdActividadInAndIdEstudianteIn(
+                            alcance.idInstitucion(), idsActividad, alcance.idsEstudiante())
+                    .stream()
+                    .filter(nota -> nota.getNotaObtenida() != null)
+                    .forEach(nota -> notasPorEstudiante
+                            .computeIfAbsent(nota.getIdEstudiante(), ignored -> new HashMap<>())
+                            .put(nota.getIdActividad(), nota.getNotaObtenida()));
+        }
+
+        Map<UUID, BigDecimal> serPorEstudiante = calificacionSerRepository
+                .findAllByIdInstitucionAndIdPeriodoEvaluacionAndIdMateriaAndIdEstudianteIn(
+                        alcance.idInstitucion(), idPeriodo, idMateria, alcance.idsEstudiante())
+                .stream()
+                .collect(Collectors.toMap(CalificacionSer::getIdEstudiante, CalificacionSer::getNotaSer));
+        Map<UUID, BigDecimal> autoPorEstudiante = autoevaluacionRepository
+                .findAllByIdInstitucionAndIdPeriodoEvaluacionAndIdMateriaAndIdEstudianteIn(
+                        alcance.idInstitucion(), idPeriodo, idMateria, alcance.idsEstudiante())
+                .stream()
+                .collect(Collectors.toMap(
+                        AutoevaluacionTrimestral::getIdEstudiante,
+                        AutoevaluacionTrimestral::getNotaAutoevaluacion));
+
+        BigDecimal pesoSaber = pesoDimension(idPeriodo, "SABER", PESO_SABER);
+        BigDecimal pesoHacer = pesoDimension(idPeriodo, "HACER", PESO_HACER);
+
+        return alcance.estudiantes().stream().map(estudiante -> {
+            Map<UUID, BigDecimal> notas = notasPorEstudiante.getOrDefault(estudiante.getId(), Map.of());
+            BigDecimal saber = calcularDimension(actividades, notas, "SABER", pesoSaber);
+            BigDecimal hacer = calcularDimension(actividades, notas, "HACER", pesoHacer);
+            BigDecimal ser = serPorEstudiante.getOrDefault(estudiante.getId(), BigDecimal.ZERO);
+            BigDecimal auto = autoPorEstudiante.getOrDefault(estudiante.getId(), BigDecimal.ZERO);
+            String nombre = estudiante.getNombres() + " " + estudiante.getApellidos();
+            return ConsolidadoEstudianteResponse.calcular(
+                    estudiante.getId(), nombre, saber, hacer, ser, auto);
+        }).toList();
+    }
+
+    private BigDecimal calcularDimension(List<ActividadEvaluativa> actividades,
+                                         Map<UUID, BigDecimal> notas,
+                                         String dimension,
+                                         BigDecimal peso) {
+        BigDecimal suma = BigDecimal.ZERO;
+        int cantidad = 0;
+        for (ActividadEvaluativa actividad : actividades) {
+            if (!dimension.equals(actividad.getDimension())) {
+                continue;
+            }
+            BigDecimal nota = notas.get(actividad.getId());
+            if (nota != null) {
+                suma = suma.add(nota);
+                cantidad++;
+            }
+        }
+        if (cantidad == 0) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal promedio = suma.divide(BigDecimal.valueOf(cantidad), 2, RoundingMode.HALF_UP);
+        return promedio.multiply(peso).divide(PUNTAJE_MAXIMO, 2, RoundingMode.HALF_UP);
+    }
+
+    private AlcanceCalificaciones resolverAlcance(UUID idPeriodo, UUID idMateria, UUID idParalelo) {
+        UUID idInstitucion = SecurityUtils.requireCurrentInstitutionId();
+        PeriodoEvaluacion periodo = periodoRepository.findByIdAndIdInstitucion(idPeriodo, idInstitucion)
+                .orElseThrow(() -> new EntityNotFoundException("Periodo no encontrado"));
+        materiaRepository.findByIdAndIdInstitucion(idMateria, idInstitucion)
+                .orElseThrow(() -> new EntityNotFoundException("Materia no encontrada"));
+
+        if (SecurityUtils.currentUserHasRole("DOCENTE")) {
+            UUID idDocente = docenteRepository
+                    .findByIdUsuarioAndIdInstitucion(SecurityUtils.currentUserId(), idInstitucion)
+                    .map(docente -> docente.getId())
+                    .orElseThrow(() -> new AccessDeniedException("Docente no encontrado"));
+            boolean asignado = asignacionDocenteRepository
+                    .existsByIdInstitucionAndIdDocenteAndIdMateriaAndIdParaleloAndIdGestionAndEstado(
+                            idInstitucion, idDocente, idMateria, idParalelo,
+                            periodo.getIdGestionAcademica(), "ACTIVA");
+            if (!asignado) {
+                throw new AccessDeniedException("La materia y el paralelo no estan asignados al docente");
+            }
+        }
+
+        List<UUID> idsEstudiante = inscripcionRepository
+                .findAllByIdInstitucionAndIdParaleloAndIdGestionAndEstado(
+                        idInstitucion, idParalelo, periodo.getIdGestionAcademica(), "ACTIVA")
+                .stream()
+                .map(Inscripcion::getIdEstudiante)
+                .distinct()
+                .toList();
+        if (idsEstudiante.isEmpty()) {
+            return new AlcanceCalificaciones(idInstitucion, List.of(), List.of());
+        }
+
+        List<Estudiante> estudiantes = estudianteRepository
+                .findAllByIdInstitucionAndIdIn(idInstitucion, idsEstudiante)
+                .stream()
+                .sorted(Comparator.comparing(Estudiante::getApellidos)
+                        .thenComparing(Estudiante::getNombres))
+                .toList();
+        return new AlcanceCalificaciones(
+                idInstitucion, estudiantes, estudiantes.stream().map(Estudiante::getId).toList());
+    }
+
+    private record AlcanceCalificaciones(
+            UUID idInstitucion, List<Estudiante> estudiantes, List<UUID> idsEstudiante) {
     }
 
     private BigDecimal pesoDimension(UUID idPeriodo, String nombre, BigDecimal fallback) {

@@ -23,7 +23,7 @@ public class DimensionController {
     private final DimensionService service;
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('GESTIONES_READ','CALIFICACIONES_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO')")
+    @PreAuthorize("hasAnyAuthority('GESTIONES_READ','CALIFICACIONES_READ') or hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE')")
     public ApiResponse<List<DimensionResponse>> listar() {
         return ApiResponse.ok("Dimensiones disponibles", service.listarDisponibles());
     }

@@ -16,6 +16,9 @@ public interface InscripcionRepository extends JpaRepository<Inscripcion, UUID> 
 
     List<Inscripcion> findAllByIdInstitucionAndIdParalelo(UUID idInstitucion, UUID idParalelo);
 
+    List<Inscripcion> findAllByIdInstitucionAndIdParaleloAndIdGestionAndEstado(
+            UUID idInstitucion, UUID idParalelo, UUID idGestion, String estado);
+
     Optional<Inscripcion> findByIdAndIdInstitucion(UUID id, UUID idInstitucion);
 
     boolean existsByIdInstitucionAndIdEstudianteAndIdGestionAndEstado(

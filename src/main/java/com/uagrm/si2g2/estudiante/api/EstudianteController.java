@@ -32,9 +32,10 @@ public class EstudianteController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO') or hasAuthority('ESTUDIANTES_READ')")
-    public ResponseEntity<ApiResponse<List<EstudianteResponse>>> listar() {
-        return ResponseEntity.ok(ApiResponse.ok("Estudiantes", service.listar()));
+    @PreAuthorize("hasAnyRole('ADMIN_INSTITUCION','SUPER_ADMIN','DIRECTOR','SECRETARIO','DOCENTE') or hasAuthority('ESTUDIANTES_READ')")
+    public ResponseEntity<ApiResponse<List<EstudianteResponse>>> listar(
+            @RequestParam(required = false) UUID idParalelo) {
+        return ResponseEntity.ok(ApiResponse.ok("Estudiantes", service.listar(idParalelo)));
     }
 
     @GetMapping("/{id}")

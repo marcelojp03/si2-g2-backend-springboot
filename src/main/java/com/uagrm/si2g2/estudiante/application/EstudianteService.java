@@ -7,6 +7,9 @@ import com.uagrm.si2g2.estudiante.domain.Estudiante;
 import com.uagrm.si2g2.estudiante.domain.EstudianteRepository;
 import com.uagrm.si2g2.estudiante.dto.EstudianteRequest;
 import com.uagrm.si2g2.estudiante.dto.EstudianteResponse;
+import com.uagrm.si2g2.asignacion.domain.AsignacionDocenteRepository;
+import com.uagrm.si2g2.docente.domain.DocenteRepository;
+import com.uagrm.si2g2.inscripcion.domain.InscripcionRepository;
 import com.uagrm.si2g2.persona.application.PersonaUsuarioSupport;
 import com.uagrm.si2g2.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
@@ -16,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +29,9 @@ public class EstudianteService {
     private final EstudianteRepository repository;
     private final PersonaUsuarioSupport personaUsuarioSupport;
     private final AuditoriaService auditoriaService;
+    private final InscripcionRepository inscripcionRepository;
+    private final DocenteRepository docenteRepository;
+    private final AsignacionDocenteRepository asignacionRepository;
 
     @Transactional
     public EstudianteResponse crear(EstudianteRequest request) {
@@ -69,7 +76,43 @@ public class EstudianteService {
 
     @Transactional(readOnly = true)
     public List<EstudianteResponse> listar() {
-        return repository.findAllByIdInstitucion(TenantContext.get()).stream()
+        return listar(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<EstudianteResponse> listar(UUID idParalelo) {
+        UUID idInstitucion = TenantContext.get();
+        Set<UUID> paralelosPermitidos = null;
+        if (SecurityUtils.currentUserHasRole("DOCENTE")) {
+            UUID idDocente = docenteRepository
+                    .findByIdUsuarioAndIdInstitucion(SecurityUtils.currentUserId(), idInstitucion)
+                    .orElseThrow(() -> new EntityNotFoundException("El usuario no tiene docente asociado"))
+                    .getId();
+            paralelosPermitidos = asignacionRepository
+                    .findAllByIdInstitucionAndIdDocente(idInstitucion, idDocente).stream()
+                    .filter(a -> "ACTIVA".equals(a.getEstado()))
+                    .map(a -> a.getIdParalelo()).collect(Collectors.toSet());
+            if (idParalelo != null && !paralelosPermitidos.contains(idParalelo)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "No tienes una asignacion activa para el paralelo solicitado");
+            }
+        }
+
+        Set<UUID> estudiantesPermitidos = null;
+        if (idParalelo != null) {
+            estudiantesPermitidos = inscripcionRepository
+                    .findAllByIdInstitucionAndIdParalelo(idInstitucion, idParalelo).stream()
+                    .filter(i -> "ACTIVA".equals(i.getEstado()))
+                    .map(i -> i.getIdEstudiante()).collect(Collectors.toSet());
+        } else if (paralelosPermitidos != null) {
+            Set<UUID> paralelos = paralelosPermitidos;
+            estudiantesPermitidos = inscripcionRepository.findAllByIdInstitucion(idInstitucion).stream()
+                    .filter(i -> "ACTIVA".equals(i.getEstado()) && paralelos.contains(i.getIdParalelo()))
+                    .map(i -> i.getIdEstudiante()).collect(Collectors.toSet());
+        }
+        Set<UUID> filtro = estudiantesPermitidos;
+        return repository.findAllByIdInstitucion(idInstitucion).stream()
+                .filter(e -> filtro == null || filtro.contains(e.getId()))
                 .map(EstudianteResponse::from).collect(Collectors.toList());
     }
 

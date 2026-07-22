@@ -195,6 +195,11 @@ modulo/
 powershell -ExecutionPolicy Bypass -File scripts/deploy/deploy-to-ecr.ps1
 ```
 
+El modulo de Alertas de Riesgo requiere una migracion manual sobre RDS antes
+de actualizar App Runner. El procedimiento completo, incluida la carga
+opcional de datos demo, esta en
+[`docs/deploy-alertas-riesgo.md`](docs/deploy-alertas-riesgo.md).
+
 | Entorno | URL |
 |---|---|
 | Local | `http://localhost:2026` |

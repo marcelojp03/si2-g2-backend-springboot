@@ -62,5 +62,5 @@ public interface CalificacionRepository extends JpaRepository<Calificacion, UUID
      */
     Optional<Calificacion> findByIdEvaluacionAndIdInscripcion(UUID idEvaluacion, UUID idInscripcion);
 
-    List<Calificacion> findAllByIdInscripcion(UUID idInscripcion);
+    List<Calificacion> findAllByIdInstitucionAndIdInscripcion(UUID idInstitucion, UUID idInscripcion);
 }

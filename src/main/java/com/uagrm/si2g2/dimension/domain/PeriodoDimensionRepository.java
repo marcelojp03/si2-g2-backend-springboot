@@ -3,12 +3,15 @@ package com.uagrm.si2g2.dimension.domain;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface PeriodoDimensionRepository extends JpaRepository<PeriodoDimension, UUID> {
 
     List<PeriodoDimension> findAllByIdPeriodoEvaluacion(UUID idPeriodoEvaluacion);
+
+    List<PeriodoDimension> findAllByIdPeriodoEvaluacionIn(Collection<UUID> idsPeriodoEvaluacion);
 
     Optional<PeriodoDimension> findByIdPeriodoEvaluacionAndDimensionId(UUID idPeriodoEvaluacion, UUID idDimension);
 

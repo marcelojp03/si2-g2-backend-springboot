@@ -1,11 +1,17 @@
 package com.uagrm.si2g2.dashboard.application;
 
 import com.uagrm.si2g2.academico.dto.GestionAcademicaResponse;
+import com.uagrm.si2g2.alertas.domain.AlertaRiesgo;
+import com.uagrm.si2g2.alertas.domain.AlertaRiesgoRepository;
+import com.uagrm.si2g2.asignacion.domain.AsignacionDocenteRepository;
 import com.uagrm.si2g2.auditoria.application.AuditoriaService;
 import com.uagrm.si2g2.auth.domain.Usuario;
 import com.uagrm.si2g2.common.SecurityUtils;
 import com.uagrm.si2g2.dashboard.dto.*;
 import com.uagrm.si2g2.docente.domain.DocenteRepository;
+import com.uagrm.si2g2.estudiante.domain.Estudiante;
+import com.uagrm.si2g2.estudiante.domain.EstudianteRepository;
+import com.uagrm.si2g2.inscripcion.domain.InscripcionRepository;
 import com.uagrm.si2g2.institucion.application.ConfiguracionService;
 import com.uagrm.si2g2.institucion.domain.Institucion;
 import com.uagrm.si2g2.institucion.domain.InstitucionRepository;
@@ -18,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +36,10 @@ public class DashboardService {
     private final ArchivoService archivoService;
     private final DocenteRepository docenteRepository;
     private final AuditoriaService auditoriaService;
+    private final AlertaRiesgoRepository alertaRiesgoRepository;
+    private final AsignacionDocenteRepository asignacionDocenteRepository;
+    private final InscripcionRepository inscripcionRepository;
+    private final EstudianteRepository estudianteRepository;
 
     @Transactional(readOnly = true)
     public DashboardGlobalResponse getGlobalDashboard() {
@@ -105,6 +116,8 @@ public class DashboardService {
                 .orElse(null);
 
         List<DashboardAlert> alerts = buildInstitutionAlerts(idInstitucion, user, gestionActiva);
+        List<DashboardRiesgoAcademicoAlert> alertasRiesgo = buildAcademicRiskAlerts(
+                idInstitucion, user, gestionActiva);
         if (alerts.stream().anyMatch(alert -> "danger".equals(alert.severidad()) || "warn".equals(alert.severidad()))) {
             auditoriaService.registrar(idInstitucion, user.getId(),
                     "DASHBOARD", "ALERTS_READ", "dashboard_institucional", idInstitucion.toString(),
@@ -118,6 +131,7 @@ public class DashboardService {
                 buildInstitutionKpis(idInstitucion, gestionActiva),
                 buildInstitutionCharts(idInstitucion),
                 alerts,
+                alertasRiesgo,
                 buildPendingActions(idInstitucion, user, gestionActiva),
                 buildQuickActions(user),
                 queryService.modulosConfigurados(idInstitucion),
@@ -270,6 +284,41 @@ public class DashboardService {
                     "/perfil", "ABIERTA"));
         }
         return alerts;
+    }
+
+    private List<DashboardRiesgoAcademicoAlert> buildAcademicRiskAlerts(
+            UUID idInstitucion, Usuario user, GestionAcademicaResponse gestionActiva) {
+        if (gestionActiva == null) return List.of();
+        boolean accesoInstitucional = user.getRoles().stream().anyMatch(role -> Set.of(
+                "ADMIN_INSTITUCION", "DIRECTOR", "SECRETARIO", "SUPER_ADMIN").contains(role.getCodigo()));
+        boolean esDocente = user.getRoles().stream().anyMatch(role -> "DOCENTE".equals(role.getCodigo()));
+        if (!accesoInstitucional && !esDocente) return List.of();
+        List<AlertaRiesgo> alertas = alertaRiesgoRepository
+                .findByIdInstitucionAndIdGestionAcademicaAndNivelRiesgoInAndActivaTrueOrderByProcesadoEnDesc(
+                        idInstitucion, gestionActiva.getId(), List.of("ALTO", "CRITICO"));
+        Map<UUID, String> nombres = estudianteRepository.findAllByIdInstitucion(idInstitucion).stream()
+                .collect(Collectors.toMap(Estudiante::getId,
+                        estudiante -> estudiante.getNombres() + " " + estudiante.getApellidos()));
+        if (accesoInstitucional) return alertas.stream()
+                .map(alerta -> DashboardRiesgoAcademicoAlert.from(
+                        alerta, nombres.getOrDefault(alerta.getIdEstudiante(), "Estudiante")))
+                .toList();
+        return docenteRepository.findByIdUsuarioAndIdInstitucion(user.getId(), idInstitucion)
+                .map(docente -> {
+                    Set<UUID> paralelos = asignacionDocenteRepository
+                            .findAllByIdInstitucionAndIdDocente(idInstitucion, docente.getId()).stream()
+                            .filter(a -> gestionActiva.getId().equals(a.getIdGestion()))
+                            .filter(a -> "ACTIVA".equals(a.getEstado()))
+                            .map(a -> a.getIdParalelo()).collect(Collectors.toSet());
+                    Set<UUID> estudiantes = inscripcionRepository
+                            .findAllByIdInstitucionAndIdGestion(idInstitucion, gestionActiva.getId()).stream()
+                            .filter(i -> "ACTIVA".equals(i.getEstado()) && paralelos.contains(i.getIdParalelo()))
+                            .map(i -> i.getIdEstudiante()).collect(Collectors.toSet());
+                    return alertas.stream().filter(a -> estudiantes.contains(a.getIdEstudiante()))
+                            .map(alerta -> DashboardRiesgoAcademicoAlert.from(
+                                    alerta, nombres.getOrDefault(alerta.getIdEstudiante(), "Estudiante")))
+                            .toList();
+                }).orElse(List.of());
     }
 
     private List<DashboardAction> buildPendingActions(UUID idInstitucion, Usuario user, GestionAcademicaResponse gestionActiva) {

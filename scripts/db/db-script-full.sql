@@ -528,6 +528,35 @@ CREATE INDEX idx_asistencia_detalle_estado ON asistencia_detalle (estado_asisten
 -- 9. CALIFICACIONES — Sprint 2
 -- =========================================================
 
+CREATE TABLE periodo_evaluacion (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_institucion UUID NOT NULL,
+    id_gestion_academica UUID NOT NULL,
+    numero_periodo INTEGER NOT NULL CHECK (numero_periodo > 0),
+    tipo_periodo VARCHAR(20) NOT NULL,
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'ABIERTO',
+    peso_ser INTEGER NOT NULL DEFAULT 10,
+    peso_saber INTEGER NOT NULL DEFAULT 45,
+    peso_hacer INTEGER NOT NULL DEFAULT 40,
+    peso_auto INTEGER NOT NULL DEFAULT 5,
+    fecha_cierre TIMESTAMPTZ,
+    justificacion_cierre VARCHAR(500),
+    id_usuario_cierre UUID REFERENCES usuario(id) ON DELETE SET NULL,
+    fecha_reapertura TIMESTAMPTZ,
+    justificacion_reapertura VARCHAR(500),
+    id_usuario_reapertura UUID REFERENCES usuario(id) ON DELETE SET NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_periodo_evaluacion UNIQUE (id_institucion, id_gestion_academica, numero_periodo),
+    CONSTRAINT fk_periodo_evaluacion_gestion_tenant
+        FOREIGN KEY (id_gestion_academica, id_institucion) REFERENCES gestion_academica (id, id_institucion) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_periodo_evaluacion_gestion_estado
+    ON periodo_evaluacion (id_institucion, id_gestion_academica, estado);
+
 CREATE TABLE docente_materia (
     id_docente UUID NOT NULL REFERENCES docente(id) ON DELETE CASCADE,
     id_materia UUID NOT NULL REFERENCES materia(id) ON DELETE CASCADE,
@@ -1225,6 +1254,77 @@ BEGIN
 END $$;
 
 -- =========================================================
+-- 18. ALERTAS DE RIESGO ACADEMICO
+-- =========================================================
+
+CREATE TABLE alerta_riesgo (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_institucion UUID NOT NULL,
+    id_estudiante UUID NOT NULL,
+    id_gestion_academica UUID NOT NULL,
+    nivel_riesgo VARCHAR(20) NOT NULL CHECK (nivel_riesgo IN ('BAJO', 'MEDIO', 'ALTO', 'CRITICO')),
+    motivo TEXT,
+    score_ia NUMERIC(5,4),
+    porcentaje_asistencia NUMERIC(5,2),
+    promedio_calificaciones NUMERIC(5,2),
+    tendencia_notas VARCHAR(20) CHECK (tendencia_notas IN ('SUBIENDO', 'ESTABLE', 'BAJANDO', 'SIN_DATOS')),
+    evaluaciones_pendientes INTEGER NOT NULL DEFAULT 0,
+    materias_reprobadas_historial INTEGER NOT NULL DEFAULT 0,
+    factores_json TEXT,
+    datos_vigentes BOOLEAN NOT NULL DEFAULT TRUE,
+    ultima_evaluacion_valida_en TIMESTAMPTZ,
+    estado_alerta VARCHAR(20) NOT NULL DEFAULT 'ABIERTA'
+        CHECK (estado_alerta IN ('ABIERTA', 'EN_SEGUIMIENTO', 'ATENDIDA', 'CERRADA')),
+    procesado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    activa BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_alerta_riesgo_id_institucion UNIQUE (id, id_institucion),
+    CONSTRAINT fk_alerta_riesgo_estudiante_tenant
+        FOREIGN KEY (id_estudiante, id_institucion) REFERENCES estudiante (id, id_institucion) ON DELETE CASCADE,
+    CONSTRAINT fk_alerta_riesgo_gestion_tenant
+        FOREIGN KEY (id_gestion_academica, id_institucion) REFERENCES gestion_academica (id, id_institucion) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX uq_alerta_riesgo_activa_estudiante_gestion
+    ON alerta_riesgo (id_institucion, id_estudiante, id_gestion_academica)
+    WHERE activa = TRUE;
+CREATE INDEX idx_alerta_riesgo_institucion_nivel
+    ON alerta_riesgo (id_institucion, id_gestion_academica, nivel_riesgo, activa);
+
+CREATE TABLE recomendacion_ia (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_alerta_riesgo UUID NOT NULL REFERENCES alerta_riesgo(id) ON DELETE CASCADE,
+    tipo_accion VARCHAR(50),
+    descripcion TEXT NOT NULL,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_recomendacion_ia_alerta ON recomendacion_ia (id_alerta_riesgo, creado_en DESC);
+
+CREATE TABLE alerta_riesgo_seguimiento (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_alerta_riesgo UUID NOT NULL,
+    id_institucion UUID NOT NULL REFERENCES institucion(id),
+    estado_anterior VARCHAR(20) NOT NULL
+        CHECK (estado_anterior IN ('ABIERTA', 'EN_SEGUIMIENTO', 'ATENDIDA', 'CERRADA')),
+    estado_nuevo VARCHAR(20) NOT NULL
+        CHECK (estado_nuevo IN ('ABIERTA', 'EN_SEGUIMIENTO', 'ATENDIDA', 'CERRADA')),
+    observacion TEXT,
+    id_usuario UUID REFERENCES usuario(id),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_alerta_seguimiento_alerta_tenant
+        FOREIGN KEY (id_alerta_riesgo, id_institucion)
+        REFERENCES alerta_riesgo (id, id_institucion) ON DELETE CASCADE,
+    CONSTRAINT chk_alerta_seguimiento_transicion CHECK (estado_anterior <> estado_nuevo)
+);
+
+CREATE INDEX idx_alerta_seguimiento_historial
+    ON alerta_riesgo_seguimiento (id_institucion, id_alerta_riesgo, creado_en, id);
+CREATE INDEX idx_alerta_seguimiento_usuario
+    ON alerta_riesgo_seguimiento (id_usuario) WHERE id_usuario IS NOT NULL;
+
+-- =========================================================
 -- FIN DEL SCRIPT
 -- =========================================================
 
@@ -1251,7 +1351,8 @@ INSERT INTO permiso (codigo, nombre, modulo, accion, descripcion) VALUES
 ('ROLES_READ',          'Roles: lectura',               'ROLES',             'READ',  'Permite consultar roles y permisos'),
 ('ROLES_WRITE',         'Roles: escritura',             'ROLES',             'WRITE', 'Permite crear y editar roles institucionales'),
 ('MI_AREA_READ',        'Mi área: lectura',             'MI_AREA',           'READ',  'Permite acceder al área operativa del docente'),
-('AUDITORIA_READ',      'Auditoría: lectura',           'AUDITORIA',         'READ',  'Permite consultar la bitácora de auditoría');
+('AUDITORIA_READ',      'Auditoría: lectura',           'AUDITORIA',         'READ',  'Permite consultar la bitácora de auditoría')
+ON CONFLICT (codigo) DO NOTHING;
 
 INSERT INTO rol_permiso (id_rol, id_permiso)
 SELECT r.id, p.id FROM rol r
